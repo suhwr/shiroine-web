@@ -42,7 +42,7 @@ function closeMobileMenu() {
 
 // Initialize navigation
 function initNavigation() {
-    window.addEventListener('scroll', handleNavbarScroll);
+    // Note: scroll listener is added at the bottom of file with throttling
     
     if (navToggle) {
         navToggle.addEventListener('click', toggleMobileMenu);
@@ -137,9 +137,11 @@ async function handleFormSubmit(e) {
         return;
     }
     
-    // Phone number validation (basic)
-    const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
-    if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+    // Phone number validation (basic - supports international formats)
+    // Allows: +country code, spaces, dashes, parentheses, and 7-15 digits
+    const phoneRegex = /^[\+]?[0-9]{1,4}?[-.\s]?[(]?[0-9]{1,3}[)]?[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,9}$/;
+    const cleanedPhone = phone.replace(/[\s\-().]/g, '');
+    if (cleanedPhone.length < 7 || cleanedPhone.length > 15 || !phoneRegex.test(phone)) {
         showNotification('Please enter a valid phone number', 'error');
         return;
     }
@@ -315,13 +317,20 @@ function dismissNotification(notification) {
 function initScrollReveal() {
     const revealElements = document.querySelectorAll('.feature-card, .step-card, .faq-item');
     
+    // Store original indices for stagger animation
+    const elementIndices = new Map();
+    revealElements.forEach((el, index) => {
+        elementIndices.set(el, index % 6); // Reset every 6 elements for reasonable stagger
+    });
+    
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry, index) => {
+        entries.forEach((entry) => {
             if (entry.isIntersecting) {
-                // Add stagger delay
+                // Use stored index for consistent stagger delay
+                const staggerIndex = elementIndices.get(entry.target) || 0;
                 setTimeout(() => {
                     entry.target.classList.add('visible');
-                }, index * 100);
+                }, staggerIndex * 100);
                 observer.unobserve(entry.target);
             }
         });
@@ -337,6 +346,9 @@ function initScrollReveal() {
 // Chat Animation
 // ====================================
 
+// Store interval ID for cleanup
+let chatAnimationInterval = null;
+
 function initChatAnimation() {
     const messages = document.querySelectorAll('.message');
     
@@ -347,7 +359,7 @@ function initChatAnimation() {
     // Continuously animate typing indicator (optional enhancement)
     const chatMessages = document.querySelector('.chat-messages');
     if (chatMessages) {
-        setInterval(() => {
+        chatAnimationInterval = setInterval(() => {
             // Add subtle animation to last message
             const lastMessage = chatMessages.querySelector('.message:last-child');
             if (lastMessage) {
@@ -359,6 +371,17 @@ function initChatAnimation() {
         }, 5000);
     }
 }
+
+// Cleanup function for chat animation
+function cleanupChatAnimation() {
+    if (chatAnimationInterval) {
+        clearInterval(chatAnimationInterval);
+        chatAnimationInterval = null;
+    }
+}
+
+// Clean up on page unload
+window.addEventListener('beforeunload', cleanupChatAnimation);
 
 // ====================================
 // Initialize Everything
