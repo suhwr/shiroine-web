@@ -260,6 +260,7 @@ body {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 12px;
+  color: var(--text-primary);
 }
 
 .step-description {
@@ -337,6 +338,7 @@ body {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 12px;
+  color: var(--text-primary);
 }
 
 .feature-description {
@@ -476,6 +478,7 @@ body {
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 8px;
+  color: var(--text-primary);
 }
 
 .donation-method-description {

@@ -68,31 +68,24 @@ export const donationMethods = [
     name: 'QRIS',
     description: 'Scan QRIS untuk donasi via berbagai e-wallet',
     type: 'qris',
-    info: 'Scan QR code di bawah menggunakan aplikasi e-wallet favorit kamu'
+    info: 'Scan QR code di bawah menggunakan aplikasi e-wallet favorit kamu',
+    qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7'
   },
   {
     id: 2,
     name: 'DANA',
     description: 'Transfer langsung ke DANA',
     type: 'dana',
-    info: '0812-3456-7890',
+    info: '083863595922',
     accountName: 'Shiroine Bot'
   },
   {
     id: 3,
-    name: 'GoPay',
-    description: 'Transfer via GoPay',
-    type: 'gopay',
-    info: '0812-3456-7890',
-    accountName: 'Shiroine Bot'
-  },
-  {
-    id: 4,
     name: 'PayPal',
     description: 'Donasi via PayPal',
     type: 'paypal',
-    info: 'shiroine@example.com'
+    info: '@shiroine'
   }
 ];
 
-export const communityLink = 'https://chat.whatsapp.com/XXXXXX';
+export const communityLink = 'https://chat.whatsapp.com/GTM7Bz07wHxJ7D0Uj6QCIA';
