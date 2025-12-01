@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { MessageCircle, Download, Smile, Users, Gamepad2, Heart, Copy, Check, ChevronDown, ExternalLink } from 'lucide-react';
-import { features, faqData, donationMethods, communityLink } from '../mockData';
+import { MessageCircle, Download, Smile, Users, Gamepad2, Heart, Copy, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
+import { communityLink } from '../mockData';
+import { translations } from '../translations';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Accordion,
   AccordionContent,
@@ -14,7 +16,14 @@ import { useToast } from '../hooks/use-toast';
 const Home = () => {
   const [copiedCommand, setCopiedCommand] = useState(null);
   const [copiedDonation, setCopiedDonation] = useState(null);
+  const [language, setLanguage] = useState('id');
   const { toast } = useToast();
+
+  const t = translations[language];
+
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'id' ? 'en' : 'id');
+  };
 
   const iconMap = {
     Download: Download,
@@ -22,6 +31,75 @@ const Home = () => {
     Users: Users,
     Gamepad2: Gamepad2
   };
+
+  // Feature data with translations
+  const features = [
+    {
+      id: 1,
+      title: t.downloaderTitle,
+      description: t.downloaderDescription,
+      icon: 'Download',
+      commands: ['.tiktok <url>', '.instagram <url>', '.youtube <url>']
+    },
+    {
+      id: 2,
+      title: t.stickerTitle,
+      description: t.stickerDescription,
+      icon: 'Smile',
+      commands: ['.sticker', '.stickergif']
+    },
+    {
+      id: 3,
+      title: t.groupTitle,
+      description: t.groupDescription,
+      icon: 'Users',
+      commands: ['.kick @user', '.promote @user', '.demote @user']
+    },
+    {
+      id: 4,
+      title: t.gamesTitle,
+      description: t.gamesDescription,
+      icon: 'Gamepad2',
+      commands: ['.tebakgambar', '.kuis', '.tebakkata']
+    }
+  ];
+
+  // FAQ data with translations
+  const faqData = [
+    { id: 1, question: t.faq1Question, answer: t.faq1Answer },
+    { id: 2, question: t.faq2Question, answer: t.faq2Answer },
+    { id: 3, question: t.faq3Question, answer: t.faq3Answer },
+    { id: 4, question: t.faq4Question, answer: t.faq4Answer },
+    { id: 5, question: t.faq5Question, answer: t.faq5Answer },
+    { id: 6, question: t.faq6Question, answer: t.faq6Answer },
+  ];
+
+  // Donation methods data
+  const donationMethods = [
+    {
+      id: 1,
+      name: 'QRIS',
+      description: t.qrisDescription,
+      type: 'qris',
+      info: t.qrisInfo,
+      qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7'
+    },
+    {
+      id: 2,
+      name: 'DANA',
+      description: t.danaDescription,
+      type: 'dana',
+      info: '083863595922',
+      accountName: 'Shiroine Bot'
+    },
+    {
+      id: 3,
+      name: 'PayPal',
+      description: t.paypalDescription,
+      type: 'paypal',
+      info: '@shiroine'
+    }
+  ];
 
   const copyToClipboard = (text, type, id) => {
     navigator.clipboard.writeText(text);
@@ -33,8 +111,8 @@ const Home = () => {
       setTimeout(() => setCopiedDonation(null), 2000);
     }
     toast({
-      title: 'Berhasil disalin!',
-      description: 'Text telah disalin ke clipboard',
+      title: t.copySuccess,
+      description: t.copyDescription,
     });
   };
 
@@ -49,14 +127,22 @@ const Home = () => {
               <span className="logo-text">Shiroine</span>
             </div>
             <nav className="nav-links">
-              <a href="#features" className="nav-link">Fitur</a>
-              <a href="#faq" className="nav-link">FAQ</a>
-              <a href="#donation" className="nav-link">Donasi</a>
+              <a href="#features" className="nav-link">{t.features}</a>
+              <a href="#faq" className="nav-link">{t.faq}</a>
+              <a href="#donation" className="nav-link">{t.donation}</a>
+              <Button 
+                className="btn-secondary"
+                onClick={toggleLanguage}
+                style={{ padding: '8px 16px', minHeight: 'auto' }}
+              >
+                <Globe size={18} />
+                {language === 'id' ? 'EN' : 'ID'}
+              </Button>
               <Button 
                 className="btn-primary btn-join"
                 onClick={() => window.open(communityLink, '_blank')}
               >
-                Join Komunitas
+                {t.joinCommunity}
               </Button>
             </nav>
           </div>
@@ -68,14 +154,13 @@ const Home = () => {
         <div className="container">
           <div className="hero-content">
             <div className="hero-badge">
-              <span className="badge-text">🤖 Bot WhatsApp Gratis</span>
+              <span className="badge-text">{t.heroBadge}</span>
             </div>
             <h1 className="hero-title">
-              Bot WhatsApp <span className="highlight-text">Shiroine</span>
+              {t.heroTitle} <span className="highlight-text">Shiroine</span>
             </h1>
             <p className="hero-description">
-              Bot WhatsApp serbaguna dengan fitur downloader, sticker maker, group management, dan games. 
-              100% gratis dan mudah digunakan!
+              {t.heroDescription}
             </p>
             <div className="hero-buttons">
               <Button 
@@ -83,13 +168,13 @@ const Home = () => {
                 onClick={() => window.open(communityLink, '_blank')}
               >
                 <ExternalLink size={20} />
-                Join Komunitas
+                {t.joinCommunity}
               </Button>
               <Button 
                 className="btn-secondary btn-lg"
                 onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
               >
-                Lihat Fitur
+                {t.viewFeatures}
               </Button>
             </div>
           </div>
@@ -100,24 +185,24 @@ const Home = () => {
       <section className="how-to-use-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Cara Menggunakan</h2>
-            <p className="section-description">Tambahkan bot Shiroine ke grup WhatsApp kamu dengan mudah</p>
+            <h2 className="section-title">{t.howToUseTitle}</h2>
+            <p className="section-description">{t.howToUseDescription}</p>
           </div>
           <div className="steps-grid">
             <Card className="step-card">
               <div className="step-number">1</div>
-              <h3 className="step-title">Join Komunitas</h3>
-              <p className="step-description">Klik tombol "Join Komunitas" untuk bergabung dengan grup WhatsApp Shiroine</p>
+              <h3 className="step-title">{t.step1Title}</h3>
+              <p className="step-description">{t.step1Description}</p>
             </Card>
             <Card className="step-card">
               <div className="step-number">2</div>
-              <h3 className="step-title">Gunakan Command</h3>
-              <p className="step-description">Kirim perintah <code className="command-code">.join &lt;link grup&gt;</code> untuk menambahkan bot ke grup kamu</p>
+              <h3 className="step-title">{t.step2Title}</h3>
+              <p className="step-description">{t.step2Description} <code className="command-code">.join &lt;link grup&gt;</code> {t.step2DescriptionEnd}</p>
             </Card>
             <Card className="step-card">
               <div className="step-number">3</div>
-              <h3 className="step-title">Maksimal 80 Member</h3>
-              <p className="step-description">Pastikan grup kamu memiliki maksimal 80 member agar bot bisa join</p>
+              <h3 className="step-title">{t.step3Title}</h3>
+              <p className="step-description">{t.step3Description}</p>
             </Card>
           </div>
         </div>
@@ -127,8 +212,8 @@ const Home = () => {
       <section id="features" className="features-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Fitur Unggulan</h2>
-            <p className="section-description">Berbagai fitur menarik yang bisa kamu gunakan</p>
+            <h2 className="section-title">{t.featuresTitle}</h2>
+            <p className="section-description">{t.featuresDescription}</p>
           </div>
           <div className="features-grid">
             {features.map((feature) => {
@@ -141,7 +226,7 @@ const Home = () => {
                   <h3 className="feature-title">{feature.title}</h3>
                   <p className="feature-description">{feature.description}</p>
                   <div className="feature-commands">
-                    <p className="commands-label">Contoh command:</p>
+                    <p className="commands-label">{t.exampleCommand}</p>
                     {feature.commands.map((cmd, idx) => (
                       <div key={idx} className="command-item">
                         <code className="command-text">{cmd}</code>
@@ -169,8 +254,8 @@ const Home = () => {
       <section id="faq" className="faq-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Pertanyaan Umum</h2>
-            <p className="section-description">Jawaban untuk pertanyaan yang sering ditanyakan</p>
+            <h2 className="section-title">{t.faqTitle}</h2>
+            <p className="section-description">{t.faqDescription}</p>
           </div>
           <div className="faq-container">
             <Accordion type="single" collapsible className="faq-accordion">
@@ -196,10 +281,9 @@ const Home = () => {
             <div className="donation-icon">
               <Heart size={40} />
             </div>
-            <h2 className="section-title">Support Shiroine</h2>
+            <h2 className="section-title">{t.donationTitle}</h2>
             <p className="section-description">
-              Bot Shiroine 100% gratis! Tapi kamu bisa bantu kami tetap aktif dengan donasi sukarela.
-              Setiap kontribusi sangat berarti untuk pengembangan bot.
+              {t.donationDescription}
             </p>
           </div>
           <div className="donation-grid">
@@ -209,9 +293,13 @@ const Home = () => {
                 <p className="donation-method-description">{method.description}</p>
                 {method.type === 'qris' ? (
                   <div className="qris-placeholder">
-                    <div className="qris-box">
-                      <span className="qris-text">QR Code</span>
-                      <span className="qris-subtext">Ganti dengan QR asli</span>
+                    <div className="qris-box" style={{ background: 'white', border: 'none', padding: '16px' }}>
+                      <QRCodeSVG 
+                        value={method.qrisString} 
+                        size={168}
+                        level="M"
+                        includeMargin={false}
+                      />
                     </div>
                     <p className="donation-info">{method.info}</p>
                   </div>
@@ -251,24 +339,24 @@ const Home = () => {
                 <span className="footer-logo-text">Shiroine</span>
               </div>
               <p className="footer-tagline">
-                Bot WhatsApp gratis dengan berbagai fitur menarik untuk grup kamu
+                {t.footerTagline}
               </p>
             </div>
             <div className="footer-links-section">
               <div className="footer-column">
-                <h4 className="footer-heading">Navigasi</h4>
+                <h4 className="footer-heading">{t.navigation}</h4>
                 <ul className="footer-list">
-                  <li><a href="#features" className="footer-link">Fitur</a></li>
-                  <li><a href="#faq" className="footer-link">FAQ</a></li>
-                  <li><a href="#donation" className="footer-link">Donasi</a></li>
+                  <li><a href="#features" className="footer-link">{t.features}</a></li>
+                  <li><a href="#faq" className="footer-link">{t.faq}</a></li>
+                  <li><a href="#donation" className="footer-link">{t.donation}</a></li>
                 </ul>
               </div>
               <div className="footer-column">
-                <h4 className="footer-heading">Komunitas</h4>
+                <h4 className="footer-heading">{t.community}</h4>
                 <ul className="footer-list">
                   <li>
                     <a href={communityLink} target="_blank" rel="noopener noreferrer" className="footer-link">
-                      Join Grup WhatsApp
+                      {t.joinWhatsApp}
                     </a>
                   </li>
                 </ul>
@@ -277,7 +365,7 @@ const Home = () => {
           </div>
           <div className="footer-bottom">
             <p className="footer-copyright">
-              © 2025 Shiroine Bot. Made with 💚 for the community
+              {t.copyright}
             </p>
           </div>
         </div>
