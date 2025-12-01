@@ -88,4 +88,4 @@ export const donationMethods = [
   }
 ];
 
-export const communityLink = 'https://chat.whatsapp.com/GTM7Bz07wHxJ7D0Uj6QCIA';
+export const communityLink = 'https://community.shiroine.my.id/';

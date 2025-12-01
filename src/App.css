@@ -654,16 +654,23 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
   .nav-links {
-    gap: 16px;
+    gap: 8px;
   }
   
   .nav-link {
     display: none;
   }
   
+  .nav-links .btn-secondary {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: auto;
+  }
+  
   .btn-join {
-    padding: 10px 20px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: 12px;
+    white-space: nowrap;
   }
   
   .hero-section {
