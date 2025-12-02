@@ -11,14 +11,14 @@ export const features = [
     title: 'Sticker Maker',
     description: 'Buat sticker WhatsApp dari foto atau video yang kamu kirim, support crop dan edit',
     icon: 'Smile',
-    commands: ['.sticker', '.stickergif']
+    commands: ['.sticker']
   },
   {
     id: 3,
     title: 'Group Management',
     description: 'Kelola grup WhatsApp dengan fitur kick, promote, demote, dan moderasi otomatis',
     icon: 'Users',
-    commands: ['.kick @user', '.promote @user', '.demote @user']
+    commands: ['.remove @user', '.promote @user', '.demote @user']
   },
   {
     id: 4,
@@ -87,5 +87,3 @@ export const donationMethods = [
     info: '@shiroine'
   }
 ];
-
-export const communityLink = 'https://chat.whatsapp.com/GTM7Bz07wHxJ7D0Uj6QCIA';
