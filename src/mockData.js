@@ -87,5 +87,3 @@ export const donationMethods = [
     info: '@shiroine'
   }
 ];
-
-export const communityLink = 'https://community.shiroine.my.id/';

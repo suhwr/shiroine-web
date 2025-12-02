@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { MessageCircle, Download, Smile, Users, Gamepad2, Heart, Copy, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
-import { communityLink } from '../mockData';
 import { translations } from '../translations';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -18,6 +17,16 @@ const Home = () => {
   const [copiedDonation, setCopiedDonation] = useState(null);
   const [language, setLanguage] = useState('id');
   const { toast } = useToast();
+
+  // Dynamic community link based on current domain
+  const communityLink = React.useMemo(() => {
+    const hostname = window.location.hostname;
+    // For localhost/development, use a fallback
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'https://community.shiroine.my.id/';
+    }
+    return `https://community.${hostname}/`;
+  }, []);
 
   const t = translations[language];
 
@@ -293,6 +302,7 @@ const Home = () => {
                 <p className="donation-method-description">{method.description}</p>
                 {method.type === 'qris' ? (
                   <div className="qris-placeholder">
+                    <p className="donation-info">{method.info}</p>
                     <div className="qris-box" style={{ background: 'white', border: 'none', padding: '16px' }}>
                       <QRCodeSVG 
                         value={method.qrisString} 
@@ -301,7 +311,6 @@ const Home = () => {
                         includeMargin={false}
                       />
                     </div>
-                    <p className="donation-info">{method.info}</p>
                   </div>
                 ) : (
                   <div className="donation-details">
