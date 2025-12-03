@@ -16,6 +16,7 @@ const Home = () => {
   const [copiedCommand, setCopiedCommand] = useState(null);
   const [copiedDonation, setCopiedDonation] = useState(null);
   const [language, setLanguage] = useState('id');
+  const [logoErrors, setLogoErrors] = useState({});
   const { toast } = useToast();
 
   // Dynamic community link based on current domain
@@ -91,7 +92,8 @@ const Home = () => {
       description: t.qrisDescription,
       type: 'qris',
       info: t.qrisInfo,
-      qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7'
+      qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7',
+      logo: '/images/qris-logo.svg'
     },
     {
       id: 2,
@@ -99,14 +101,16 @@ const Home = () => {
       description: t.danaDescription,
       type: 'dana',
       info: '083863595922',
-      accountName: 'Shiroine Bot'
+      accountName: 'Shiroine Bot',
+      logo: '/images/dana-logo.svg'
     },
     {
       id: 3,
       name: 'PayPal',
       description: t.paypalDescription,
       type: 'paypal',
-      info: '@shiroine'
+      info: '@shiroine',
+      logo: '/images/paypal-logo.svg'
     }
   ];
 
@@ -298,7 +302,20 @@ const Home = () => {
           <div className="donation-grid">
             {donationMethods.map((method) => (
               <Card key={method.id} className="donation-card">
-                <h3 className="donation-method-name">{method.name}</h3>
+                <div className="donation-logo-container">
+                  <img 
+                    src={method.logo} 
+                    alt={`${method.name} payment method logo`} 
+                    className="donation-logo"
+                    onError={(e) => { 
+                      e.target.style.display = 'none'; 
+                      setLogoErrors(prev => ({ ...prev, [method.id]: true }));
+                    }}
+                  />
+                </div>
+                {logoErrors[method.id] && (
+                  <h3 className="donation-method-name">{method.name}</h3>
+                )}
                 <p className="donation-method-description">{method.description}</p>
                 {method.type === 'qris' ? (
                   <div className="qris-placeholder">

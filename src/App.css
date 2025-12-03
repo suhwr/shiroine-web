@@ -474,6 +474,20 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
+.donation-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.donation-logo {
+  width: 100px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
 .donation-method-name {
   font-size: 24px;
   font-weight: 600;
