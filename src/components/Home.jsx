@@ -16,6 +16,7 @@ const Home = () => {
   const [copiedCommand, setCopiedCommand] = useState(null);
   const [copiedDonation, setCopiedDonation] = useState(null);
   const [language, setLanguage] = useState('id');
+  const [logoErrors, setLogoErrors] = useState({});
   const { toast } = useToast();
 
   // Dynamic community link based on current domain
@@ -306,10 +307,15 @@ const Home = () => {
                     src={method.logo} 
                     alt={`${method.name} payment method logo`} 
                     className="donation-logo"
-                    onError={(e) => { e.target.style.display = 'none'; }}
+                    onError={(e) => { 
+                      e.target.style.display = 'none'; 
+                      setLogoErrors(prev => ({ ...prev, [method.id]: true }));
+                    }}
                   />
                 </div>
-                <h3 className="donation-method-name">{method.name}</h3>
+                {logoErrors[method.id] && (
+                  <h3 className="donation-method-name">{method.name}</h3>
+                )}
                 <p className="donation-method-description">{method.description}</p>
                 {method.type === 'qris' ? (
                   <div className="qris-placeholder">
