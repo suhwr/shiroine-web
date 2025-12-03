@@ -304,8 +304,9 @@ const Home = () => {
                 <div className="donation-logo-container">
                   <img 
                     src={method.logo} 
-                    alt={`${method.name} logo`} 
+                    alt={`${method.name} payment method logo`} 
                     className="donation-logo"
+                    onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 </div>
                 <h3 className="donation-method-name">{method.name}</h3>
