@@ -91,7 +91,8 @@ const Home = () => {
       description: t.qrisDescription,
       type: 'qris',
       info: t.qrisInfo,
-      qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7'
+      qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7',
+      logo: '/images/qris-logo.svg'
     },
     {
       id: 2,
@@ -99,14 +100,16 @@ const Home = () => {
       description: t.danaDescription,
       type: 'dana',
       info: '083863595922',
-      accountName: 'Shiroine Bot'
+      accountName: 'Shiroine Bot',
+      logo: '/images/dana-logo.svg'
     },
     {
       id: 3,
       name: 'PayPal',
       description: t.paypalDescription,
       type: 'paypal',
-      info: '@shiroine'
+      info: '@shiroine',
+      logo: '/images/paypal-logo.svg'
     }
   ];
 
@@ -298,6 +301,13 @@ const Home = () => {
           <div className="donation-grid">
             {donationMethods.map((method) => (
               <Card key={method.id} className="donation-card">
+                <div className="donation-logo-container">
+                  <img 
+                    src={method.logo} 
+                    alt={`${method.name} logo`} 
+                    className="donation-logo"
+                  />
+                </div>
                 <h3 className="donation-method-name">{method.name}</h3>
                 <p className="donation-method-description">{method.description}</p>
                 {method.type === 'qris' ? (
