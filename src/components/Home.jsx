@@ -307,6 +307,9 @@ const Home = () => {
                     src={method.logo} 
                     alt={`${method.name} payment method logo`} 
                     className="donation-logo"
+                    loading="lazy"
+                    width="120"
+                    height="40"
                     onError={(e) => { 
                       e.target.style.display = 'none'; 
                       setLogoErrors(prev => ({ ...prev, [method.id]: true }));
