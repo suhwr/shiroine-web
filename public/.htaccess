@@ -71,7 +71,9 @@
   Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Force HTTPS (if applicable)
+# Force HTTPS (uncomment if needed)
+# IMPORTANT: Enable this if HTTPS is not enforced at the CDN/server level
+# to prevent man-in-the-middle attacks
 # <IfModule mod_rewrite.c>
 #   RewriteEngine On
 #   RewriteCond %{HTTPS} off

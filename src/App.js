@@ -10,7 +10,7 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <Suspense fallback={<div style={{ minHeight: '100vh', background: 'rgb(17, 17, 19)' }} />}>
+        <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-primary, rgb(17, 17, 19))' }} />}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="*" element={<Home />} />

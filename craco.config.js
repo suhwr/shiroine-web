@@ -98,7 +98,7 @@ const webpackConfig = {
             filename: '[path][base].gz',
             algorithm: 'gzip',
             test: /\.(js|css|html|svg)$/,
-            threshold: 10240, // Only compress files larger than 10KB
+            threshold: 1024, // Compress files larger than 1KB
             minRatio: 0.8,
           })
         );
