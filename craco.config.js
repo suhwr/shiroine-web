@@ -1,5 +1,6 @@
 // craco.config.js
 const path = require("path");
+const CompressionPlugin = require("compression-webpack-plugin");
 require("dotenv").config();
 
 // Environment variable overrides
@@ -61,6 +62,46 @@ const webpackConfig = {
             '**/public/**',
           ],
         };
+      }
+
+      // Production optimizations
+      if (webpackConfig.mode === 'production') {
+        // Optimize chunk splitting
+        webpackConfig.optimization = {
+          ...webpackConfig.optimization,
+          splitChunks: {
+            chunks: 'all',
+            cacheGroups: {
+              // Separate vendor code
+              vendor: {
+                test: /[\\/]node_modules[\\/]/,
+                name: 'vendors',
+                priority: 10,
+                reuseExistingChunk: true,
+              },
+              // Separate common code
+              common: {
+                minChunks: 2,
+                priority: 5,
+                reuseExistingChunk: true,
+                enforce: true,
+              },
+            },
+          },
+          // Better runtime chunk
+          runtimeChunk: 'single',
+        };
+
+        // Add compression plugins for production
+        webpackConfig.plugins.push(
+          new CompressionPlugin({
+            filename: '[path][base].gz',
+            algorithm: 'gzip',
+            test: /\.(js|css|html|svg)$/,
+            threshold: 10240, // Only compress files larger than 10KB
+            minRatio: 0.8,
+          })
+        );
       }
 
       // Add health check plugin to webpack if enabled
