@@ -3,8 +3,9 @@ import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 
-// Lazy load the Home component
+// Lazy load components
 const Home = lazy(() => import('./components/Home'));
+const Pricing = lazy(() => import('./components/Pricing'));
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-primary, rgb(17, 17, 19))' }} />}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </Suspense>

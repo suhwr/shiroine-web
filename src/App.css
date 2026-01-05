@@ -116,7 +116,7 @@ body {
 .btn-primary:hover {
   background: var(--accent-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(218, 255, 1, 0.3);
+  box-shadow: 0 8px 25px rgba(34, 211, 238, 0.3);
 }
 
 .btn-secondary {
@@ -726,5 +726,181 @@ body {
   
   .footer-links-section {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Pricing Page Styles */
+.pricing-section {
+  padding: 60px 0;
+}
+
+.pricing-type-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.pricing-type-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.pricing-type-description {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.pricing-grid-group {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  max-width: 700px;
+}
+
+.pricing-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 32px;
+  position: relative;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.pricing-card.popular {
+  border-color: var(--accent-primary);
+  box-shadow: 0 10px 30px rgba(34, 211, 238, 0.2);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  right: 24px;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pricing-card-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.pricing-plan-duration {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.pricing-plan-price {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.pricing-benefits {
+  margin-bottom: 24px;
+  flex-grow: 1;
+}
+
+.benefits-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.benefit-check {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.pricing-note {
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent-primary);
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  border-radius: 6px;
+}
+
+.note-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.btn-pricing {
+  width: 100%;
+  justify-content: center;
+  margin-top: auto;
+}
+
+/* Footer Contact Styles */
+.footer-contact-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.footer-contact-link:hover .contact-icon {
+  opacity: 1;
+}
+
+/* Responsive adjustments for pricing */
+@media (max-width: 768px) {
+  .pricing-grid,
+  .pricing-grid-group {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .pricing-type-title {
+    font-size: 28px;
+  }
+
+  .pricing-plan-price {
+    font-size: 28px;
   }
 }
