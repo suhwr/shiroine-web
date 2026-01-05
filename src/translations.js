@@ -72,6 +72,29 @@ export const translations = {
     // Toast
     copySuccess: 'Berhasil disalin!',
     copyDescription: 'Text telah disalin ke clipboard',
+    
+    // Pricing page
+    pricing: 'Harga',
+    pricingTitle: 'Pilih Paket Premium',
+    pricingDescription: 'Tingkatkan pengalaman bot kamu dengan paket premium',
+    userPremium: 'User Premium',
+    groupPremium: 'Group Premium',
+    userPremiumDescription: 'Paket premium untuk user individual',
+    groupPremiumDescription: 'Paket premium untuk semua member grup',
+    days5: '5 Hari',
+    days15: '15 Hari',
+    month1: '1 Bulan',
+    buyNow: 'Beli Sekarang',
+    benefits: 'Benefit',
+    unlimitedLimit: 'Limit Unlimited',
+    premiumFeatures: 'Membuka Fitur Premium',
+    prioritySupport: 'Dukungan Prioritas',
+    userNote: 'Paket ini hanya berlaku untuk user individual',
+    groupNote: 'Paket ini berlaku untuk semua member di grup',
+    popularPlan: 'Paling Populer',
+    
+    // Footer contact
+    contactOwner: 'Kontak Owner',
   },
   en: {
     // Navigation
@@ -146,5 +169,28 @@ export const translations = {
     // Toast
     copySuccess: 'Copied successfully!',
     copyDescription: 'Text has been copied to clipboard',
+    
+    // Pricing page
+    pricing: 'Pricing',
+    pricingTitle: 'Choose Your Premium Plan',
+    pricingDescription: 'Upgrade your bot experience with premium packages',
+    userPremium: 'User Premium',
+    groupPremium: 'Group Premium',
+    userPremiumDescription: 'Premium package for individual users',
+    groupPremiumDescription: 'Premium package for all group members',
+    days5: '5 Days',
+    days15: '15 Days',
+    month1: '1 Month',
+    buyNow: 'Buy Now',
+    benefits: 'Benefits',
+    unlimitedLimit: 'Unlimited Limit',
+    premiumFeatures: 'Unlock Premium Features',
+    prioritySupport: 'Priority Support',
+    userNote: 'This plan is only for individual users',
+    groupNote: 'This plan applies to all members in the group',
+    popularPlan: 'Most Popular',
+    
+    // Footer contact
+    contactOwner: 'Contact Owner',
   }
 };
