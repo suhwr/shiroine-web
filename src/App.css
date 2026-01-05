@@ -116,7 +116,7 @@ body {
 .btn-primary:hover {
   background: var(--accent-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(218, 255, 1, 0.3);
+  box-shadow: 0 8px 25px rgba(34, 211, 238, 0.3);
 }
 
 .btn-secondary {

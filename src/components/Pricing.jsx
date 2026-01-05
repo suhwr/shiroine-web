@@ -23,7 +23,7 @@ const Pricing = () => {
   };
 
   const handleBuyPremium = (plan) => {
-    const whatsappUrl = `https://wa.me/${PAYMENT_INFO.whatsappNumber}?text=${PAYMENT_INFO.command}%20${plan}`;
+    const whatsappUrl = `https://wa.me/${PAYMENT_INFO.whatsappNumber}?text=${encodeURIComponent(PAYMENT_INFO.command + ' ' + plan)}`;
     window.open(whatsappUrl, '_blank');
   };
 
