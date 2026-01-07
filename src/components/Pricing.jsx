@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Check, Globe, ExternalLink } from 'lucide-react';
 import { translations } from '../translations';
 import { CONTACT_INFO, PAYMENT_INFO } from '../config';
@@ -7,6 +8,7 @@ import { Card } from './ui/card';
 
 const Pricing = () => {
   const [language, setLanguage] = useState('id');
+  const navigate = useNavigate();
   
   const communityLink = React.useMemo(() => {
     const hostname = window.location.hostname;
@@ -20,11 +22,6 @@ const Pricing = () => {
 
   const toggleLanguage = () => {
     setLanguage(prev => prev === 'id' ? 'en' : 'id');
-  };
-
-  const handleBuyPremium = (plan) => {
-    const whatsappUrl = `https://wa.me/${PAYMENT_INFO.whatsappNumber}?text=${encodeURIComponent(PAYMENT_INFO.command + ' ' + plan)}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   const userPlans = [
@@ -62,6 +59,22 @@ const Pricing = () => {
       popular: true,
     },
   ];
+
+  const handleBuyPremium = (plan) => {
+    // Navigate to checkout page with plan details
+    const planData = [...userPlans, ...groupPlans].find(p => p.id === plan);
+    
+    if (planData) {
+      navigate('/checkout', {
+        state: {
+          id: planData.id,
+          duration: planData.duration,
+          price: planData.price,
+          type: planData.id.startsWith('user') ? t.userPremium : t.groupPremium
+        }
+      });
+    }
+  };
 
   const benefits = [
     t.unlimitedLimit,
@@ -155,7 +168,6 @@ const Pricing = () => {
                   onClick={() => handleBuyPremium(plan.id)}
                 >
                   {t.buyNow}
-                  <ExternalLink size={18} />
                 </Button>
               </Card>
             ))}
@@ -201,7 +213,6 @@ const Pricing = () => {
                   onClick={() => handleBuyPremium(plan.id)}
                 >
                   {t.buyNow}
-                  <ExternalLink size={18} />
                 </Button>
               </Card>
             ))}

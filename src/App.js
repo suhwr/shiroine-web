@@ -6,6 +6,7 @@ import { Toaster } from './components/ui/sonner';
 // Lazy load components
 const Home = lazy(() => import('./components/Home'));
 const Pricing = lazy(() => import('./components/Pricing'));
+const Checkout = lazy(() => import('./components/Checkout'));
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </Suspense>
