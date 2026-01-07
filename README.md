@@ -1,6 +1,55 @@
-# Getting Started with Create React App
+# Shiroine Bot Website
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the official website for Shiroine WhatsApp Bot, built with React.
+
+## Features
+
+- **Home Page**: Overview of bot features and capabilities
+- **Pricing Page**: Premium plan options for users and groups
+- **Checkout Page**: Integrated payment system with Tripay gateway
+- **Responsive Design**: Mobile-friendly interface
+- **Multi-language Support**: Indonesian and English
+
+## Payment Integration
+
+The website includes integration with [Tripay Payment Gateway](https://tripay.co.id) for processing premium plan purchases. Users can pay using:
+- Virtual Account (Bank Transfer)
+- E-Wallet (QRIS, GoPay, OVO, DANA, etc.)
+- Retail Outlets (Alfamart, Indomaret, etc.)
+
+**Important**: For production deployment, you need to configure Tripay API credentials. See [TRIPAY_INTEGRATION.md](./TRIPAY_INTEGRATION.md) for detailed setup instructions.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 14+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+3. Copy `.env.example` to `.env` and configure your environment variables
+4. Start the development server:
+   ```bash
+   npm start
+   ```
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+REACT_APP_BACKEND_URL=https://shiroine.my.id
+REACT_APP_TRIPAY_MODE=sandbox
+REACT_APP_TRIPAY_API_KEY=your_api_key
+REACT_APP_TRIPAY_PRIVATE_KEY=your_private_key
+REACT_APP_TRIPAY_MERCHANT_CODE=your_merchant_code
+```
 
 ## Available Scripts
 
@@ -68,3 +117,31 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── Home.jsx          # Landing page
+│   ├── Pricing.jsx       # Premium plans page
+│   ├── Checkout.jsx      # Payment checkout page
+│   └── ui/               # Reusable UI components
+├── config.js             # Configuration constants
+├── translations.js       # Multi-language support
+└── App.js                # Main app component with routing
+```
+
+## Documentation
+
+- [Tripay Integration Guide](./TRIPAY_INTEGRATION.md) - Payment gateway setup and configuration
+
+## License
+
+This project is part of the Shiroine Bot ecosystem.
+
+## Support
+
+For questions or issues, contact:
+- Email: sherdi240@gmail.com
+- WhatsApp: +62 831-5666-9609

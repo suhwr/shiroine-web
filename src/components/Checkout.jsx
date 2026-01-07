@@ -10,6 +10,22 @@ import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { toast } from 'sonner';
 import axios from 'axios';
+import CryptoJS from 'crypto-js';
+
+/**
+ * Utility function to generate Tripay signature
+ * 
+ * ⚠️ SECURITY WARNING: This function is currently used client-side for development/testing.
+ * In PRODUCTION, signature generation MUST be moved to a backend server to protect
+ * your Tripay private key. Client-side signature generation exposes your credentials
+ * and is a security risk.
+ * 
+ * See TRIPAY_INTEGRATION.md for recommended backend implementation.
+ */
+const generateTripaySignature = (merchantCode, merchantRef, amount, privateKey) => {
+  const data = merchantCode + merchantRef + amount;
+  return CryptoJS.HmacSHA256(data, privateKey).toString();
+};
 
 const Checkout = () => {
   const [language, setLanguage] = useState('id');
@@ -111,21 +127,13 @@ const Checkout = () => {
       const amount = getNumericPrice(planDetails.price);
       const merchantRef = `PREMIUM-${Date.now()}`;
       
-      // Generate signature for Tripay
-      // NOTE: In production, this should be done on the backend for security
-      const generateSignature = (merchantCode, merchantRef, amount) => {
-        const CryptoJS = require('crypto-js');
-        const data = merchantCode + merchantRef + amount;
-        return CryptoJS.HmacSHA256(data, TRIPAY_CONFIG.privateKey).toString();
-      };
-      
       // Prepare transaction data according to Tripay documentation
       const transactionData = {
         method: selectedPaymentMethod,
         merchant_ref: merchantRef,
         amount: amount,
         customer_name: whatsappNumber, // Using WhatsApp number as customer identifier
-        customer_email: `${whatsappNumber}@shiroine.id`, // Dummy email
+        customer_email: `user-${whatsappNumber}@example.com`, // Placeholder email
         customer_phone: whatsappNumber,
         order_items: [
           {
@@ -134,9 +142,9 @@ const Checkout = () => {
             quantity: 1,
           }
         ],
-        return_url: `${window.location.origin}/payment-status`,
+        return_url: `${window.location.origin}/pricing`, // Redirect back to pricing on completion
         expired_time: (Math.floor(Date.now() / 1000) + (24 * 60 * 60)), // 24 hours
-        signature: generateSignature(TRIPAY_CONFIG.merchantCode, merchantRef, amount)
+        signature: generateTripaySignature(TRIPAY_CONFIG.merchantCode, merchantRef, amount, TRIPAY_CONFIG.privateKey)
       };
 
       // Create transaction
@@ -154,17 +162,14 @@ const Checkout = () => {
       if (response.data.success) {
         const paymentData = response.data.data;
         
-        // Redirect to payment page or show payment instructions
+        // Redirect to payment page
         if (paymentData.checkout_url) {
           window.location.href = paymentData.checkout_url;
         } else {
-          // Show payment instructions in a modal or new page
-          navigate('/payment-instructions', { 
-            state: { 
-              paymentData,
-              planDetails 
-            } 
-          });
+          // For direct payment methods, show success message
+          toast.success(language === 'id' ? 'Transaksi berhasil dibuat!' : 'Transaction created successfully!');
+          // Optionally navigate back to pricing or show instructions
+          setTimeout(() => navigate('/pricing'), 2000);
         }
       } else {
         toast.error(response.data.message || (language === 'id' ? 'Gagal membuat transaksi' : 'Failed to create transaction'));
