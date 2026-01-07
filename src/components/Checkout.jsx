@@ -21,8 +21,16 @@ import CryptoJS from 'crypto-js';
  * and is a security risk.
  * 
  * See TRIPAY_INTEGRATION.md for recommended backend implementation.
+ * 
+ * TODO: Move to backend before production deployment
  */
 const generateTripaySignature = (merchantCode, merchantRef, amount, privateKey) => {
+  // Prevent usage in production builds without explicit override
+  if (process.env.NODE_ENV === 'production' && !process.env.REACT_APP_ALLOW_CLIENT_SIGNATURE) {
+    console.error('Client-side signature generation is disabled in production. Please implement backend signature generation.');
+    throw new Error('Client-side signature generation not allowed in production');
+  }
+  
   const data = merchantCode + merchantRef + amount;
   return CryptoJS.HmacSHA256(data, privateKey).toString();
 };
@@ -60,7 +68,10 @@ const Checkout = () => {
   };
 
   // Extract numeric price from string like "Rp 7.000"
+  // Note: This assumes Indonesian format (thousands separator with dot)
+  // and integer prices only (no decimal cents)
   const getNumericPrice = (priceStr) => {
+    // Remove all non-digit characters (Rp, dots, commas, spaces)
     return parseInt(priceStr.replace(/[^0-9]/g, ''), 10);
   };
 
@@ -125,7 +136,7 @@ const Checkout = () => {
       setProcessing(true);
 
       const amount = getNumericPrice(planDetails.price);
-      const merchantRef = `PREMIUM-${Date.now()}`;
+      const merchantRef = `PREMIUM-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       
       // Prepare transaction data according to Tripay documentation
       const transactionData = {
@@ -133,7 +144,7 @@ const Checkout = () => {
         merchant_ref: merchantRef,
         amount: amount,
         customer_name: `Customer-${whatsappNumber}`, // Format: Customer-628123456789
-        customer_email: `user${whatsappNumber}@customer.shiroine.id`, // Using project domain
+        customer_email: `noreply@shiroine.my.id`, // Using project domain
         customer_phone: whatsappNumber,
         order_items: [
           {
