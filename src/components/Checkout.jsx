@@ -61,7 +61,7 @@ const Checkout = () => {
 
   // Extract numeric price from string like "Rp 7.000"
   const getNumericPrice = (priceStr) => {
-    return parseInt(priceStr.replace(/[^0-9]/g, ''));
+    return parseInt(priceStr.replace(/[^0-9]/g, ''), 10);
   };
 
   // Fetch available payment channels from Tripay
@@ -110,14 +110,14 @@ const Checkout = () => {
     }
 
     if (!selectedPaymentMethod) {
-      toast.error(language === 'id' ? 'Pilih metode pembayaran' : 'Select a payment method');
+      toast.error(t.selectPaymentMethod);
       return;
     }
 
     if (!TRIPAY_CONFIG.apiKey || !TRIPAY_CONFIG.privateKey || !TRIPAY_CONFIG.merchantCode) {
-      toast.error(language === 'id' 
+      toast.error(t.paymentConfigError || (language === 'id' 
         ? 'Konfigurasi pembayaran belum lengkap. Silakan hubungi admin.' 
-        : 'Payment configuration incomplete. Please contact admin.');
+        : 'Payment configuration incomplete. Please contact admin.'));
       return;
     }
 
@@ -132,8 +132,8 @@ const Checkout = () => {
         method: selectedPaymentMethod,
         merchant_ref: merchantRef,
         amount: amount,
-        customer_name: whatsappNumber, // Using WhatsApp number as customer identifier
-        customer_email: `user-${whatsappNumber}@example.com`, // Placeholder email
+        customer_name: `Customer-${whatsappNumber}`, // Format: Customer-628123456789
+        customer_email: `user${whatsappNumber}@customer.shiroine.id`, // Using project domain
         customer_phone: whatsappNumber,
         order_items: [
           {
@@ -172,11 +172,11 @@ const Checkout = () => {
           setTimeout(() => navigate('/pricing'), 2000);
         }
       } else {
-        toast.error(response.data.message || (language === 'id' ? 'Gagal membuat transaksi' : 'Failed to create transaction'));
+        toast.error(response.data.message || t.transactionError || (language === 'id' ? 'Gagal membuat transaksi' : 'Failed to create transaction'));
       }
     } catch (error) {
       console.error('Error creating transaction:', error);
-      toast.error(error.response?.data?.message || (language === 'id' ? 'Terjadi kesalahan saat memproses pembayaran' : 'An error occurred while processing payment'));
+      toast.error(error.response?.data?.message || t.paymentProcessingError || (language === 'id' ? 'Terjadi kesalahan saat memproses pembayaran' : 'An error occurred while processing payment'));
     } finally {
       setProcessing(false);
     }

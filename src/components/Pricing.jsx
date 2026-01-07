@@ -24,22 +24,6 @@ const Pricing = () => {
     setLanguage(prev => prev === 'id' ? 'en' : 'id');
   };
 
-  const handleBuyPremium = (plan) => {
-    // Navigate to checkout page with plan details
-    const planData = [...userPlans, ...groupPlans].find(p => p.id === plan);
-    
-    if (planData) {
-      navigate('/checkout', {
-        state: {
-          id: planData.id,
-          duration: planData.duration,
-          price: planData.price,
-          type: planData.id.startsWith('user') ? t.userPremium : t.groupPremium
-        }
-      });
-    }
-  };
-
   const userPlans = [
     {
       id: 'user-5d',
@@ -75,6 +59,22 @@ const Pricing = () => {
       popular: true,
     },
   ];
+
+  const handleBuyPremium = (plan) => {
+    // Navigate to checkout page with plan details
+    const planData = [...userPlans, ...groupPlans].find(p => p.id === plan);
+    
+    if (planData) {
+      navigate('/checkout', {
+        state: {
+          id: planData.id,
+          duration: planData.duration,
+          price: planData.price,
+          type: planData.id.startsWith('user') ? t.userPremium : t.groupPremium
+        }
+      });
+    }
+  };
 
   const benefits = [
     t.unlimitedLimit,

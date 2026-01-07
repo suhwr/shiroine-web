@@ -126,6 +126,9 @@ export const translations = {
     whatsappNumber: 'Nomor WhatsApp',
     whatsappNumberPlaceholder: 'Masukkan nomor WhatsApp Anda',
     whatsappRequired: 'Nomor WhatsApp diperlukan untuk verifikasi',
+    paymentConfigError: 'Konfigurasi pembayaran belum lengkap. Silakan hubungi admin.',
+    transactionError: 'Gagal membuat transaksi',
+    paymentProcessingError: 'Terjadi kesalahan saat memproses pembayaran',
   },
   en: {
     // Navigation
@@ -254,5 +257,8 @@ export const translations = {
     whatsappNumber: 'WhatsApp Number',
     whatsappNumberPlaceholder: 'Enter your WhatsApp number',
     whatsappRequired: 'WhatsApp number is required for verification',
+    paymentConfigError: 'Payment configuration incomplete. Please contact admin.',
+    transactionError: 'Failed to create transaction',
+    paymentProcessingError: 'An error occurred while processing payment',
   }
 };
