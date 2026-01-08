@@ -273,7 +273,7 @@ const Checkout = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <Card className="p-6" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <Card className="checkout-card p-6">
                 <h2 className="text-xl font-bold mb-4 text-white">{t.orderSummary}</h2>
                 <div className="space-y-3">
                   <div className="flex justify-between">
@@ -296,7 +296,7 @@ const Checkout = () => {
 
             {/* Payment Form */}
             <div className="lg:col-span-2">
-              <Card className="p-6" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+              <Card className="checkout-card p-6">
                 <h2 className="text-xl font-bold mb-6 text-white">{t.paymentMethod}</h2>
 
                 {/* Premium Stacking Policy Notice */}
