@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Globe, Clock, CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { MessageCircle, Globe, Clock, CheckCircle, XCircle, AlertCircle, ExternalLink, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { translations } from '../translations';
-import { getPaymentHistory } from '../lib/cookies';
+import { PAYMENT_API_CONFIG } from '../config';
 import Footer from './Footer';
 import Sidebar from './Sidebar';
+import axios from 'axios';
+import { toast } from 'sonner';
 
 const History = () => {
   const [language, setLanguage] = useState('id');
   const [history, setHistory] = useState([]);
+  const [identifier, setIdentifier] = useState('');
+  const [identifierType, setIdentifierType] = useState('user'); // 'user' or 'group'
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
   const navigate = useNavigate();
   const t = translations[language];
 
@@ -25,11 +34,66 @@ const History = () => {
     setLanguage(prev => prev === 'id' ? 'en' : 'id');
   };
 
-  useEffect(() => {
-    // Load payment history from cookies
-    const paymentHistory = getPaymentHistory();
-    setHistory(paymentHistory);
-  }, []);
+  // Fetch payment history from API
+  const fetchHistory = async (page = 1) => {
+    if (!identifier) {
+      toast.error(language === 'id' ? 'Masukkan nomor WhatsApp atau ID grup' : 'Enter WhatsApp number or group ID');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `${PAYMENT_API_CONFIG.baseUrl}/api/payment-history`,
+        {
+          identifier: identifier,
+          type: identifierType,
+          page: page
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          withCredentials: true,
+        }
+      );
+
+      if (response.data.success) {
+        setHistory(response.data.data.history || []);
+        setPagination({
+          page: response.data.data.page,
+          perPage: response.data.data.perPage,
+          totalCount: response.data.data.totalCount,
+          totalPages: response.data.data.totalPages,
+          hasNext: response.data.data.hasNext,
+          hasPrevious: response.data.data.hasPrevious,
+        });
+        setCurrentPage(page);
+      } else {
+        toast.error(response.data.message || (language === 'id' ? 'Gagal memuat riwayat' : 'Failed to load history'));
+        setHistory([]);
+        setPagination(null);
+      }
+    } catch (error) {
+      console.error('History fetch error:', error);
+      const errorMessage = error.response?.data?.message || 
+        (language === 'id' ? 'Gagal memuat riwayat pembayaran' : 'Failed to load payment history');
+      toast.error(errorMessage);
+      setHistory([]);
+      setPagination(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchHistory(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    fetchHistory(newPage);
+  };
 
   const getStatusInfo = (status) => {
     switch (status?.toUpperCase()) {
@@ -132,6 +196,78 @@ const History = () => {
                 ? 'Lihat semua transaksi pembayaran Anda' 
                 : 'View all your payment transactions'}
             </p>
+
+            {/* Search Form */}
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px'
+            }}>
+              <h2 className="text-lg font-semibold mb-4">
+                {language === 'id' ? 'Cari Riwayat Pembayaran' : 'Search Payment History'}
+              </h2>
+              
+              <div className="mb-4">
+                <Label className="mb-2 block">
+                  {language === 'id' ? 'Tipe' : 'Type'}
+                </Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="identifierType"
+                      value="user"
+                      checked={identifierType === 'user'}
+                      onChange={(e) => setIdentifierType(e.target.value)}
+                      className="w-4 h-4"
+                    />
+                    <span>{language === 'id' ? 'Nomor WhatsApp' : 'WhatsApp Number'}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="identifierType"
+                      value="group"
+                      checked={identifierType === 'group'}
+                      onChange={(e) => setIdentifierType(e.target.value)}
+                      className="w-4 h-4"
+                    />
+                    <span>{language === 'id' ? 'ID Grup' : 'Group ID'}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder={identifierType === 'user' 
+                    ? (language === 'id' ? 'Masukkan nomor WhatsApp (contoh: 628123456789)' : 'Enter WhatsApp number (e.g., 628123456789)')
+                    : (language === 'id' ? 'Masukkan ID Grup' : 'Enter Group ID')}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="flex-1"
+                  disabled={loading}
+                />
+                <Button 
+                  onClick={handleSearch}
+                  disabled={loading || !identifier}
+                  className="btn-primary"
+                  style={{ minWidth: '120px' }}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin mr-2" />
+                      {language === 'id' ? 'Mencari...' : 'Searching...'}
+                    </>
+                  ) : (
+                    language === 'id' ? 'Cari' : 'Search'
+                  )}
+                </Button>
+              </div>
+            </div>
 
             {history.length === 0 ? (
               <div style={{
@@ -270,6 +406,45 @@ const History = () => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {pagination && pagination.totalPages > 1 && (
+              <div style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginTop: '24px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <Button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={!pagination.hasPrevious || loading}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <ChevronLeft size={18} />
+                  {language === 'id' ? 'Sebelumnya' : 'Previous'}
+                </Button>
+                
+                <span className="text-sm text-gray-400">
+                  {language === 'id' ? 'Halaman' : 'Page'} {currentPage} {language === 'id' ? 'dari' : 'of'} {pagination.totalPages}
+                  {' '}({pagination.totalCount} {language === 'id' ? 'transaksi' : 'transactions'})
+                </span>
+                
+                <Button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={!pagination.hasNext || loading}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  {language === 'id' ? 'Berikutnya' : 'Next'}
+                  <ChevronRight size={18} />
+                </Button>
               </div>
             )}
           </div>
