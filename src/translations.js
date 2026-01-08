@@ -5,6 +5,7 @@ export const translations = {
     faq: 'FAQ',
     donation: 'Donasi',
     joinCommunity: 'Join Komunitas',
+    buyPremium: 'Beli Premium',
     
     // Hero section
     heroBadge: '🤖 Bot WhatsApp Gratis',
@@ -142,6 +143,7 @@ export const translations = {
     faq: 'FAQ',
     donation: 'Donation',
     joinCommunity: 'Join Community',
+    buyPremium: 'Buy Premium',
     
     // Hero section
     heroBadge: '🤖 Free WhatsApp Bot',
