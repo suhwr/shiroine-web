@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from './ui/accordion';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { useToast } from '../hooks/use-toast';
 
 const Home = () => {
