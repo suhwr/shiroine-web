@@ -427,8 +427,8 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 			// Wrap in anonymous function to ensure response is sent even if cookie fails
 			func() {
 				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("Panic while setting cookie: %v", r)
+					if recoveredErr := recover(); recoveredErr != nil {
+						log.Printf("Panic while setting cookie: %v", recoveredErr)
 					}
 				}()
 				
@@ -442,6 +442,11 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// Create transaction record
+				if paymentData["reference"] == nil {
+					log.Printf("Warning: reference is nil in paymentData")
+					return
+				}
+				
 				reference, ok := paymentData["reference"].(string)
 				if !ok {
 					log.Printf("Warning: reference is not a string, got type %T with value %v", paymentData["reference"], paymentData["reference"])
