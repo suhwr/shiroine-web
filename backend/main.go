@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -67,18 +68,30 @@ type APIResponse struct {
 	Error   string      `json:"error,omitempty"`
 }
 
-// Rate limiter map
-var limiters = make(map[string]*rate.Limiter)
+// Rate limiter map with mutex for thread-safety
+var (
+	limiters   = make(map[string]*rate.Limiter)
+	limitersMu sync.RWMutex
+)
 
 // Rate limiter middleware
 func rateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := getIP(r)
+		
+		limitersMu.RLock()
 		limiter, exists := limiters[ip]
+		limitersMu.RUnlock()
+		
 		if !exists {
-			// 100 requests per 15 minutes = ~0.111 requests per second
-			limiter = rate.NewLimiter(rate.Every(9*time.Second), 100)
-			limiters[ip] = limiter
+			limitersMu.Lock()
+			// Double-check after acquiring write lock
+			if limiter, exists = limiters[ip]; !exists {
+				// 100 requests per 15 minutes = ~0.111 requests per second
+				limiter = rate.NewLimiter(rate.Every(9*time.Second), 100)
+				limiters[ip] = limiter
+			}
+			limitersMu.Unlock()
 		}
 
 		if !limiter.Allow() {
@@ -625,6 +638,7 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 // Random string generator
 func randomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	// Use crypto/rand for better randomness (Go 1.20+ auto-seeds math/rand)
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = charset[rand.Intn(len(charset))]
@@ -633,9 +647,6 @@ func randomString(length int) string {
 }
 
 func main() {
-	// Seed random number generator
-	rand.Seed(time.Now().UnixNano())
-
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
