@@ -9,7 +9,7 @@ const Pricing = lazy(() => import('./components/Pricing'));
 const Checkout = lazy(() => import('./components/Checkout'));
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./components/TermsOfService'));
-const AboutTripay = lazy(() => import('./components/AboutTripay'));
+const AboutUs = lazy(() => import('./components/AboutUs'));
 const History = lazy(() => import('./components/History'));
 
 function App() {
@@ -24,7 +24,7 @@ function App() {
             <Route path="/history" element={<History />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/about-tripay" element={<AboutTripay />} />
+            <Route path="/about-us" element={<AboutUs />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </Suspense>

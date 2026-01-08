@@ -388,7 +388,7 @@ const Home = () => {
                 <ul className="footer-list">
                   <li><a href="/privacy-policy" className="footer-link">{t.privacyPolicy}</a></li>
                   <li><a href="/terms-of-service" className="footer-link">{t.termsOfService}</a></li>
-                  <li><a href="/about-tripay" className="footer-link">{t.aboutTripay}</a></li>
+                  <li><a href="/about-us" className="footer-link">{t.aboutUs}</a></li>
                 </ul>
               </div>
               <div className="footer-column">

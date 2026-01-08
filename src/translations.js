@@ -134,7 +134,7 @@ export const translations = {
     legal: 'Legal',
     privacyPolicy: 'Kebijakan Privasi',
     termsOfService: 'Ketentuan Layanan',
-    aboutTripay: 'Tentang Tripay',
+    aboutUs: 'Tentang Kami',
   },
   en: {
     // Navigation
@@ -271,6 +271,6 @@ export const translations = {
     legal: 'Legal',
     privacyPolicy: 'Privacy Policy',
     termsOfService: 'Terms of Service',
-    aboutTripay: 'About Tripay',
+    aboutUs: 'About Us',
   }
 };
