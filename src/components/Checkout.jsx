@@ -374,12 +374,12 @@ const Checkout = () => {
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center justify-center py-8 text-white">
                     <Loader2 className="animate-spin mr-2" size={24} />
                     <span>{t.loadingPaymentMethods}</span>
                   </div>
                 ) : paymentChannels.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
+                  <div className="text-center py-8 text-gray-200">
                     <p>{t.noPaymentMethods}</p>
                     <p className="text-sm mt-2">
                       {language === 'id' 
@@ -392,7 +392,7 @@ const Checkout = () => {
                     <div className="space-y-4">
                       {Object.entries(groupedChannels).map(([group, channels]) => (
                         <div key={group} className="space-y-2">
-                          <h3 className="font-semibold text-sm text-gray-300 uppercase tracking-wide">
+                          <h3 className="font-semibold text-sm text-gray-100 uppercase tracking-wide">
                             {group === 'Virtual Account' ? t.virtualAccount :
                              group === 'E-Wallet' ? t.eWallet :
                              group === 'Convenience Store' ? t.retailOutlet :
@@ -419,12 +419,12 @@ const Checkout = () => {
                                         className="h-6 w-auto"
                                       />
                                     )}
-                                    <Label htmlFor={channel.code} className="cursor-pointer">
+                                    <Label htmlFor={channel.code} className="cursor-pointer text-white">
                                       {channel.name}
                                     </Label>
                                   </div>
                                   {channel.total_fee && channel.total_fee.flat && (
-                                    <span className="text-sm text-gray-400">
+                                    <span className="text-sm text-gray-200">
                                       +Rp {channel.total_fee.flat.toLocaleString('id-ID')}
                                     </span>
                                   )}
