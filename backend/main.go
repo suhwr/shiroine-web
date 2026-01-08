@@ -10,6 +10,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -123,14 +124,22 @@ func getCookie(r *http.Request, name string) string {
 	if err != nil {
 		return ""
 	}
-	return cookie.Value
+	// URL decode the value
+	decodedValue, err := url.QueryUnescape(cookie.Value)
+	if err != nil {
+		return cookie.Value
+	}
+	return decodedValue
 }
 
 // Set cookie
 func setCookie(w http.ResponseWriter, name, value string, domain string) {
+	// URL encode the value to handle special characters in JSON
+	encodedValue := url.QueryEscape(value)
+	
 	cookie := &http.Cookie{
 		Name:     name,
-		Value:    value,
+		Value:    encodedValue,
 		Path:     "/",
 		MaxAge:   365 * 24 * 60 * 60, // 1 year
 		HttpOnly: false,
