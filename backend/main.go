@@ -444,7 +444,7 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 				// Create transaction record
 				reference, ok := paymentData["reference"].(string)
 				if !ok {
-					log.Printf("Warning: reference is not a string")
+					log.Printf("Warning: reference is not a string, got type %T with value %v", paymentData["reference"], paymentData["reference"])
 					return
 				}
 				
