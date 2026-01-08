@@ -555,8 +555,16 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("Failed to query payment_history for reference %s: %v", reference, err)
 			} else {
-				log.Printf("Retrieved payment details: phoneNumber=%v, groupID=%v, orderItemsSize=%d bytes", 
-					phoneNumber.Valid, groupID.Valid, len(orderItemsJSON))
+				phoneStr := "nil"
+				if phoneNumber.Valid {
+					phoneStr = phoneNumber.String
+				}
+				groupStr := "nil"
+				if groupID.Valid {
+					groupStr = groupID.String
+				}
+				log.Printf("Retrieved payment details: phoneNumber=%s, groupID=%s, orderItemsSize=%d bytes", 
+					phoneStr, groupStr, len(orderItemsJSON))
 
 				// Parse order items to get plan details
 				var orderItems []map[string]interface{}
