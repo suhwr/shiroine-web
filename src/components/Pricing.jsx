@@ -113,12 +113,6 @@ const Pricing = () => {
                 <Globe size={18} />
                 {language === 'id' ? 'EN' : 'ID'}
               </Button>
-              <Button 
-                className="btn-primary btn-join"
-                onClick={() => window.open(communityLink, '_blank')}
-              >
-                {t.joinCommunity}
-              </Button>
             </nav>
           </div>
         </div>
