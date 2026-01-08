@@ -9,9 +9,9 @@ const Footer = ({ language = 'id' }) => {
   const communityLink = React.useMemo(() => {
     const hostname = window.location.hostname;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'https://community.shiroine.my.id/';
+      return 'https://gc.shiroine.my.id/';
     }
-    return `https://community.${hostname}/`;
+    return `https://gc.${hostname}/`;
   }, []);
 
   return (
