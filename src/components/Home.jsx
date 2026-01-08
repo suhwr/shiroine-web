@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { MessageCircle, Download, Smile, Users, Gamepad2, Heart, Copy, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
+import { MessageCircle, Download, Smile, Users, Gamepad2, Copy, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
 import { translations } from '../translations';
 import { CONTACT_INFO } from '../config';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   Accordion,
   AccordionContent,
@@ -15,9 +14,7 @@ import { useToast } from '../hooks/use-toast';
 
 const Home = () => {
   const [copiedCommand, setCopiedCommand] = useState(null);
-  const [copiedDonation, setCopiedDonation] = useState(null);
   const [language, setLanguage] = useState('id');
-  const [logoErrors, setLogoErrors] = useState({});
   const { toast } = useToast();
 
   // Dynamic community link based on current domain
@@ -85,44 +82,12 @@ const Home = () => {
     { id: 6, question: t.faq6Question, answer: t.faq6Answer },
   ];
 
-  // Donation methods data
-  const donationMethods = [
-    {
-      id: 1,
-      name: 'QRIS',
-      description: t.qrisDescription,
-      type: 'qris',
-      info: t.qrisInfo,
-      qrisString: '00020101021126570011ID.DANA.WWW011893600915377709982202097770998220303UMI51440014ID.CO.QRIS.WWW0215ID10254099274110303UMI5204481453033605802ID5913Shiroine Cell6015Kota Jakarta Ti61051347063044DC7',
-      logo: '/images/qris-logo.svg'
-    },
-    {
-      id: 2,
-      name: 'DANA',
-      description: t.danaDescription,
-      type: 'dana',
-      info: '083863595922',
-      accountName: 'Shiroine Bot',
-      logo: '/images/dana-logo.svg'
-    },
-    {
-      id: 3,
-      name: 'PayPal',
-      description: t.paypalDescription,
-      type: 'paypal',
-      info: '@shiroine',
-      logo: '/images/paypal-logo.svg'
-    }
-  ];
 
   const copyToClipboard = (text, type, id) => {
     navigator.clipboard.writeText(text);
     if (type === 'command') {
       setCopiedCommand(id);
       setTimeout(() => setCopiedCommand(null), 2000);
-    } else if (type === 'donation') {
-      setCopiedDonation(id);
-      setTimeout(() => setCopiedDonation(null), 2000);
     }
     toast({
       title: t.copySuccess,
@@ -137,13 +102,13 @@ const Home = () => {
         <div className="container">
           <div className="header-content">
             <div className="logo-section">
-              <MessageCircle className="logo-icon" size={32} />
+              <img src="/android-chrome-192x192.png" alt="Shiroine Logo" className="logo-icon" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
               <span className="logo-text">Shiroine</span>
             </div>
             <nav className="nav-links">
               <a href="#features" className="nav-link">{t.features}</a>
               <a href="#faq" className="nav-link">{t.faq}</a>
-              <a href="#donation" className="nav-link">{t.donation}</a>
+              <a href="/donate" className="nav-link">{t.donation}</a>
               <a href="/pricing" className="nav-link">{t.pricing}</a>
               <Button 
                 className="btn-secondary"
@@ -190,6 +155,12 @@ const Home = () => {
                 onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
               >
                 {t.viewFeatures}
+              </Button>
+              <Button 
+                className="btn-primary btn-lg"
+                onClick={() => window.location.href = '/pricing'}
+              >
+                {t.buyPremium}
               </Button>
             </div>
           </div>
@@ -289,77 +260,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Donation Section */}
-      <section id="donation" className="donation-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="donation-icon">
-              <Heart size={40} />
-            </div>
-            <h2 className="section-title">{t.donationTitle}</h2>
-            <p className="section-description">
-              {t.donationDescription}
-            </p>
-          </div>
-          <div className="donation-grid">
-            {donationMethods.map((method) => (
-              <Card key={method.id} className="donation-card">
-                <div className="donation-logo-container">
-                  <img 
-                    src={method.logo} 
-                    alt={`${method.name} payment method logo`} 
-                    className="donation-logo"
-                    loading="lazy"
-                    width="120"
-                    height="40"
-                    onError={(e) => { 
-                      e.target.style.display = 'none'; 
-                      setLogoErrors(prev => ({ ...prev, [method.id]: true }));
-                    }}
-                  />
-                </div>
-                {logoErrors[method.id] && (
-                  <h3 className="donation-method-name">{method.name}</h3>
-                )}
-                <p className="donation-method-description">{method.description}</p>
-                {method.type === 'qris' ? (
-                  <div className="qris-placeholder">
-                    <p className="donation-info">{method.info}</p>
-                    <div className="qris-box" style={{ background: 'white', border: 'none', padding: '16px' }}>
-                      <QRCodeSVG 
-                        value={method.qrisString} 
-                        size={168}
-                        level="M"
-                        includeMargin={false}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="donation-details">
-                    {method.accountName && (
-                      <p className="account-name">a.n. {method.accountName}</p>
-                    )}
-                    <div className="info-copy-container">
-                      <code className="donation-info-code">{method.info}</code>
-                      <button
-                        className="copy-button-donation"
-                        onClick={() => copyToClipboard(method.info, 'donation', method.id)}
-                      >
-                        {copiedDonation === method.id ? (
-                          <Check size={18} />
-                        ) : (
-                          <Copy size={18} />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="footer">
         <div className="container">
@@ -379,8 +279,9 @@ const Home = () => {
                 <ul className="footer-list">
                   <li><a href="#features" className="footer-link">{t.features}</a></li>
                   <li><a href="#faq" className="footer-link">{t.faq}</a></li>
-                  <li><a href="#donation" className="footer-link">{t.donation}</a></li>
+                  <li><a href="/donate" className="footer-link">{t.donation}</a></li>
                   <li><a href="/pricing" className="footer-link">{t.pricing}</a></li>
+                  <li><a href="/history" className="footer-link">{language === 'id' ? 'Riwayat' : 'History'}</a></li>
                 </ul>
               </div>
               <div className="footer-column">
@@ -388,7 +289,7 @@ const Home = () => {
                 <ul className="footer-list">
                   <li><a href="/privacy-policy" className="footer-link">{t.privacyPolicy}</a></li>
                   <li><a href="/terms-of-service" className="footer-link">{t.termsOfService}</a></li>
-                  <li><a href="/about-tripay" className="footer-link">{t.aboutTripay}</a></li>
+                  <li><a href="/about-us" className="footer-link">{t.aboutUs}</a></li>
                 </ul>
               </div>
               <div className="footer-column">

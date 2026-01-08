@@ -33,7 +33,7 @@ const Footer = ({ language = 'id' }) => {
               <ul className="footer-list">
                 <li><a href="/#features" className="footer-link">{t.features}</a></li>
                 <li><a href="/#faq" className="footer-link">{t.faq}</a></li>
-                <li><a href="/#donation" className="footer-link">{t.donation}</a></li>
+                <li><a href="/donate" className="footer-link">{t.donation}</a></li>
                 <li><a href="/pricing" className="footer-link">{t.pricing}</a></li>
                 <li><a href="/history" className="footer-link">{language === 'id' ? 'Riwayat' : 'History'}</a></li>
               </ul>
@@ -43,7 +43,7 @@ const Footer = ({ language = 'id' }) => {
               <ul className="footer-list">
                 <li><a href="/privacy-policy" className="footer-link">{t.privacyPolicy}</a></li>
                 <li><a href="/terms-of-service" className="footer-link">{t.termsOfService}</a></li>
-                <li><a href="/about-tripay" className="footer-link">{t.aboutTripay}</a></li>
+                <li><a href="/about-us" className="footer-link">{t.aboutUs}</a></li>
               </ul>
             </div>
             <div className="footer-column">

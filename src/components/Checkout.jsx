@@ -171,13 +171,13 @@ const Checkout = () => {
         <div className="container">
           <div className="header-content">
             <div className="logo-section">
-              <MessageCircle className="logo-icon" size={32} />
+              <img src="/android-chrome-192x192.png" alt="Shiroine Logo" className="logo-icon" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
               <span className="logo-text">Shiroine</span>
             </div>
             <nav className="nav-links">
               <a href="/" className="nav-link">{t.features}</a>
               <a href="/#faq" className="nav-link">{t.faq}</a>
-              <a href="/#donation" className="nav-link">{t.donation}</a>
+              <a href="/donate" className="nav-link">{t.donation}</a>
               <a href="/pricing" className="nav-link">{t.pricing}</a>
               <Button 
                 className="btn-secondary"
