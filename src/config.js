@@ -13,7 +13,7 @@ export const PAYMENT_INFO = {
 
 // Get the current domain dynamically
 const getCurrentDomain = () => {
-  if (typeof window === 'undefined') return 'shiroine.my.id';
+  if (typeof window === 'undefined') return 'shiroine.web.id';
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'localhost:3001'; // Local development backend
