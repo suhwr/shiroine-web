@@ -7,7 +7,7 @@ This is the official website for Shiroine WhatsApp Bot, built with React and a s
 The project consists of two main components:
 
 1. **Frontend** (React) - User interface, hosted on Vercel/Netlify
-2. **Backend** (Node.js/Express) - Payment gateway integration, hosted on VPS/cloud platform
+2. **Backend** (Go) - Payment gateway integration, hosted on VPS/cloud platform
 
 ## Features
 
@@ -78,7 +78,7 @@ The website uses [Tripay Payment Gateway](https://tripay.co.id) for processing p
 
 2. Install dependencies:
    ```bash
-   npm install
+   go mod download
    ```
 
 3. Copy `.env.example` to `.env` and configure:
@@ -95,9 +95,9 @@ The website uses [Tripay Payment Gateway](https://tripay.co.id) for processing p
 
 4. Start the backend server:
    ```bash
-   npm start
-   # or for development with auto-reload:
-   npm run dev
+   go run main.go
+   # or build and run:
+   make build && make run
    ```
 
 ## Environment Variables
@@ -128,11 +128,17 @@ Launches the test runner in interactive watch mode.
 
 ### Backend Scripts
 
-#### `npm start`
-Starts the backend server in production mode.
+#### `go run main.go`
+Runs the backend server in development mode.
 
-#### `npm run dev`
-Starts the backend server with nodemon for development.
+#### `make build`
+Builds the backend server binary.
+
+#### `make run`
+Builds and runs the backend server.
+
+#### `make dev`
+Runs the backend server with live reload (requires air).
 
 ## Project Structure
 

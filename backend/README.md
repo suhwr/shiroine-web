@@ -19,13 +19,13 @@ This backend server securely handles all payment-related operations with Tripay 
 - ✅ Cookie-based cart management
 - ✅ CORS support for frontend
 - ✅ Rate limiting protection
-- ✅ Helmet security headers
+- ✅ Security headers
 - ✅ Health check endpoint
+- ✅ Written in Go for better performance and lower resource usage
 
 ## Prerequisites
 
-- Node.js 14+ or higher
-- npm or yarn
+- Go 1.18+ or higher
 - Tripay merchant account (sandbox or production)
 
 ## Installation
@@ -35,9 +35,9 @@ This backend server securely handles all payment-related operations with Tripay 
 cd backend
 ```
 
-2. Install dependencies:
+2. Install Go dependencies:
 ```bash
-npm install
+go mod download
 ```
 
 3. Create `.env` file from example:
@@ -66,14 +66,51 @@ DOMAIN=shiroine.my.id
 
 ## Running the Server
 
-### Development Mode (with auto-reload)
+### Development Mode
 ```bash
-npm run dev
+go run main.go
 ```
 
-### Production Mode
+### Production Mode (Build and Run)
 ```bash
-npm start
+# Build the binary
+go build -o server main.go
+
+# Run the binary
+./server
+```
+
+### Using Makefile
+```bash
+# Build the server
+make build
+
+# Run the server
+make run
+
+# Run in development mode with live reload (requires air)
+make dev
+
+# Clean build artifacts
+make clean
+```
+
+### Using Docker
+```bash
+# Build and run with docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the server
+docker-compose down
+
+# Build manually
+docker build -t shiroine-backend .
+
+# Run manually
+docker run -p 3001:3001 --env-file .env shiroine-backend
 ```
 
 The server will start on `http://localhost:3001` (or the port specified in .env).
@@ -99,27 +136,57 @@ This backend should be deployed separately from the frontend (not on Vercel/Netl
 
 ### Deployment Steps (VPS Example)
 
-1. **Install Node.js on VPS:**
+1. **Install Go on VPS:**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 ```
 
 2. **Clone and Setup:**
 ```bash
 git clone <repository>
 cd shiroine-web/backend
-npm install
+go mod download
 cp .env.example .env
 nano .env  # Configure your environment variables
 ```
 
-3. **Install PM2 (Process Manager):**
+3. **Build and Run with systemd:**
 ```bash
-sudo npm install -g pm2
-pm2 start server.js --name shiroine-payment
-pm2 startup
-pm2 save
+# Build the binary
+go build -o server main.go
+
+# Create systemd service file
+sudo nano /etc/systemd/system/shiroine-payment.service
+```
+
+Add the following content:
+```ini
+[Unit]
+Description=Shiroine Payment Backend Server
+After=network.target
+
+[Service]
+Type=simple
+User=runner
+WorkingDirectory=/path/to/shiroine-web/backend
+Environment="PATH=/usr/local/go/bin:/usr/bin:/bin"
+ExecStart=/path/to/shiroine-web/backend/server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable shiroine-payment
+sudo systemctl start shiroine-payment
+sudo systemctl status shiroine-payment
 ```
 
 4. **Configure Nginx (Reverse Proxy):**
@@ -255,11 +322,16 @@ The backend uses cookies (not requiring login) for:
 
 ## Monitoring and Logs
 
-Use PM2 for monitoring:
+Use systemd for monitoring:
 ```bash
-pm2 logs shiroine-payment
-pm2 monit
-pm2 status
+# View logs
+sudo journalctl -u shiroine-payment -f
+
+# Check status
+sudo systemctl status shiroine-payment
+
+# Restart service
+sudo systemctl restart shiroine-payment
 ```
 
 ## Troubleshooting
@@ -267,7 +339,8 @@ pm2 status
 ### Server not starting
 - Check if port 3001 is available
 - Verify environment variables are set correctly
-- Check Node.js version (should be 14+)
+- Check Go version (should be 1.18+)
+- Ensure all dependencies are installed: `go mod download`
 
 ### Payment channels not loading
 - Verify Tripay API key is correct
