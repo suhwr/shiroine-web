@@ -665,8 +665,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 									special_limit = 0,
 									max_special_limit = $4,
 									expired = $5,
-									last_special_reset = $6,
-									updated_at = CURRENT_TIMESTAMP
+									last_special_reset = $6
 							`, jid, lid, 0, specialLimit, newExpired.Format(time.RFC3339), time.Now().Format(time.RFC3339))
 
 								if err != nil {
