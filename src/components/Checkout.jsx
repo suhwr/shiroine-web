@@ -274,20 +274,20 @@ const Checkout = () => {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">{t.orderSummary}</h2>
+                <h2 className="text-xl font-bold mb-4 text-white">{t.orderSummary}</h2>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">{t.planType}:</span>
-                    <span className="font-medium">{planDetails.type}</span>
+                    <span className="text-gray-300">{t.planType}:</span>
+                    <span className="font-medium text-white">{planDetails.type}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">{t.planDuration}:</span>
-                    <span className="font-medium">{planDetails.duration}</span>
+                    <span className="text-gray-300">{t.planDuration}:</span>
+                    <span className="font-medium text-white">{planDetails.duration}</span>
                   </div>
                   <div className="border-t border-gray-700 pt-3 mt-3">
                     <div className="flex justify-between text-lg font-bold">
-                      <span>{t.total}:</span>
-                      <span className="text-green-500">{planDetails.price}</span>
+                      <span className="text-white">{t.total}:</span>
+                      <span className="text-green-400">{planDetails.price}</span>
                     </div>
                   </div>
                 </div>
@@ -297,21 +297,21 @@ const Checkout = () => {
             {/* Payment Form */}
             <div className="lg:col-span-2">
               <Card className="p-6">
-                <h2 className="text-xl font-bold mb-6">{t.paymentMethod}</h2>
+                <h2 className="text-xl font-bold mb-6 text-white">{t.paymentMethod}</h2>
 
                 {/* Premium Stacking Policy Notice */}
-                <div className="mb-6 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
-                  <h3 className="font-semibold text-blue-300 mb-2">
+                <div className="mb-6 p-4 bg-blue-950 border-2 border-blue-500 rounded-lg">
+                  <h3 className="font-semibold text-yellow-300 mb-2">
                     {language === 'id' ? '⚠️ Penting: Kebijakan Premium' : '⚠️ Important: Premium Policy'}
                   </h3>
-                  <ul className="text-sm text-gray-300 space-y-1">
+                  <ul className="text-sm text-white space-y-1">
                     <li>• {language === 'id' 
                       ? 'Premium dapat ditumpuk: jika masih ada sisa durasi, waktu baru akan ditambahkan ke durasi yang tersisa' 
                       : 'Premium can be stacked: if there is remaining time, new time will be added to the remaining duration'}</li>
                     <li>• {language === 'id' 
                       ? 'Special limit akan direset ke 0 dan max_special_limit akan diperbarui sesuai paket baru, meskipun paket sebelumnya memiliki limit lebih tinggi' 
                       : 'Special limit will be reset to 0 and max_special_limit will be updated according to new plan, even if previous plan had higher limit'}</li>
-                    <li className="text-yellow-400 font-medium">• {language === 'id' 
+                    <li className="text-yellow-300 font-medium">• {language === 'id' 
                       ? 'Contoh: Jika Anda memiliki paket 30 hari (15 limit) dengan sisa 3 hari, lalu membeli paket 15 hari (10 limit), durasi akan menjadi 18 hari tetapi max_special_limit menjadi 10' 
                       : 'Example: If you have 30 days plan (15 limit) with 3 days remaining, then buy 15 days plan (10 limit), duration becomes 18 days but max_special_limit becomes 10'}</li>
                   </ul>
@@ -319,7 +319,7 @@ const Checkout = () => {
 
                 {/* Phone/Group ID Input with Verification */}
                 <div className="mb-6">
-                  <Label htmlFor="whatsapp" className="mb-2 block">
+                  <Label htmlFor="whatsapp" className="mb-2 block text-white font-semibold">
                     {planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group')
                       ? (language === 'id' ? 'ID Grup' : 'Group ID')
                       : t.whatsappNumber} <span className="text-red-500">*</span>
@@ -357,16 +357,16 @@ const Checkout = () => {
                     </Button>
                   </div>
                   {verified && verificationResult && (
-                    <div className="mt-2 p-3 bg-green-900/20 border border-green-700 rounded-md flex items-center gap-2">
-                      <Check size={18} className="text-green-400" />
-                      <span className="text-sm text-green-300">{verificationResult.message}</span>
+                    <div className="mt-2 p-3 bg-green-950 border-2 border-green-500 rounded-md flex items-center gap-2">
+                      <Check size={18} className="text-green-300" />
+                      <span className="text-sm text-white font-medium">{verificationResult.message}</span>
                     </div>
                   )}
-                  <p className="text-sm text-gray-400 mt-2">
+                  <p className="text-sm text-gray-200 mt-2 font-medium">
                     {planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group')
                       ? (language === 'id' 
-                        ? 'Masukkan ID grup WhatsApp Anda (contoh: 120363xxxxx@g.us)' 
-                        : 'Enter your WhatsApp group ID (example: 120363xxxxx@g.us)')
+                        ? '💡 Cara mendapatkan ID Grup: Datang ke grup tujuan dan gunakan command .ginfo, lalu ambil ID (contoh: 120363xxxxx) tanpa @g.us' 
+                        : '💡 How to get Group ID: Go to the target group and use .ginfo command, then take the ID (example: 120363xxxxx) without @g.us')
                       : (language === 'id' 
                         ? 'Contoh: 628123456789 (gunakan kode negara tanpa +)' 
                         : 'Example: 628123456789 (use country code without +)')}
