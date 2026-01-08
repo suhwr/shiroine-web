@@ -129,6 +129,12 @@ export const translations = {
     paymentConfigError: 'Konfigurasi pembayaran belum lengkap. Silakan hubungi admin.',
     transactionError: 'Gagal membuat transaksi',
     paymentProcessingError: 'Terjadi kesalahan saat memproses pembayaran',
+    
+    // Static pages
+    legal: 'Legal',
+    privacyPolicy: 'Kebijakan Privasi',
+    termsOfService: 'Ketentuan Layanan',
+    aboutTripay: 'Tentang Tripay',
   },
   en: {
     // Navigation
@@ -260,5 +266,11 @@ export const translations = {
     paymentConfigError: 'Payment configuration incomplete. Please contact admin.',
     transactionError: 'Failed to create transaction',
     paymentProcessingError: 'An error occurred while processing payment',
+    
+    // Static pages
+    legal: 'Legal',
+    privacyPolicy: 'Privacy Policy',
+    termsOfService: 'Terms of Service',
+    aboutTripay: 'About Tripay',
   }
 };

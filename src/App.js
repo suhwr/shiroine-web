@@ -7,6 +7,9 @@ import { Toaster } from './components/ui/sonner';
 const Home = lazy(() => import('./components/Home'));
 const Pricing = lazy(() => import('./components/Pricing'));
 const Checkout = lazy(() => import('./components/Checkout'));
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./components/TermsOfService'));
+const AboutTripay = lazy(() => import('./components/AboutTripay'));
 
 function App() {
   return (
@@ -17,6 +20,9 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/about-tripay" element={<AboutTripay />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </Suspense>
