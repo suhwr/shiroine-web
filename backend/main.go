@@ -11,7 +11,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -60,10 +59,6 @@ type CreateTransactionRequest struct {
 	ReturnURL     string      `json:"returnUrl"`
 }
 
-type CartRequest struct {
-	Items interface{} `json:"items"`
-}
-
 // Response structures
 type APIResponse struct {
 	Success bool        `json:"success"`
@@ -82,11 +77,11 @@ var (
 func rateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := getIP(r)
-		
+
 		limitersMu.RLock()
 		limiter, exists := limiters[ip]
 		limitersMu.RUnlock()
-		
+
 		if !exists {
 			limitersMu.Lock()
 			// Double-check after acquiring write lock
@@ -133,40 +128,6 @@ func verifyCallbackSignature(callbackSignature string, payload []byte) bool {
 	h.Write(payload)
 	generatedSignature := hex.EncodeToString(h.Sum(nil))
 	return callbackSignature == generatedSignature
-}
-
-// Get cookie value
-func getCookie(r *http.Request, name string) string {
-	cookie, err := r.Cookie(name)
-	if err != nil {
-		return ""
-	}
-	// URL decode the value
-	decodedValue, err := url.QueryUnescape(cookie.Value)
-	if err != nil {
-		return cookie.Value
-	}
-	return decodedValue
-}
-
-// Set cookie
-func setCookie(w http.ResponseWriter, name, value string, domain string) {
-	// URL encode the value to handle special characters in JSON
-	encodedValue := url.QueryEscape(value)
-	
-	cookie := &http.Cookie{
-		Name:     name,
-		Value:    encodedValue,
-		Path:     "/",
-		MaxAge:   365 * 24 * 60 * 60, // 1 year
-		HttpOnly: false,
-		Secure:   os.Getenv("NODE_ENV") == "production",
-		SameSite: http.SameSiteLaxMode,
-	}
-	if domain != "" && os.Getenv("NODE_ENV") == "production" {
-		cookie.Domain = "." + domain
-	}
-	http.SetCookie(w, cookie)
 }
 
 // Helper function to respond with JSON
@@ -391,7 +352,7 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 
 	if success, ok := result["success"].(bool); ok && success {
 		if paymentData, ok := result["data"].(map[string]interface{}); ok {
-			// Save to payment_history table instead of cookie
+			// Save to payment_history table
 			if db != nil {
 				orderItemsJSON, _ := json.Marshal(req.OrderItems)
 				var phoneNumber, groupID sql.NullString
@@ -401,7 +362,7 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 				if req.GroupID != "" {
 					groupID = sql.NullString{String: req.GroupID, Valid: true}
 				}
-				
+
 				_, err := db.Exec(`
 					INSERT INTO payment_history 
 					(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
@@ -423,68 +384,6 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Try to save to cookie for backward compatibility (temporary)
-			// Wrap in anonymous function to ensure response is sent even if cookie fails
-			func() {
-				defer func() {
-					if recoveredErr := recover(); recoveredErr != nil {
-						log.Printf("Panic while setting cookie: %v", recoveredErr)
-					}
-				}()
-				
-				var existingHistory []TransactionRecord
-				historyJSON := getCookie(r, "paymentHistory")
-				if historyJSON != "" {
-					if err := json.Unmarshal([]byte(historyJSON), &existingHistory); err != nil {
-						log.Printf("Failed to unmarshal existing history: %v", err)
-						existingHistory = []TransactionRecord{}
-					}
-				}
-
-				// Create transaction record
-				if paymentData["reference"] == nil {
-					log.Printf("Warning: reference is nil in paymentData")
-					return
-				}
-				
-				reference, ok := paymentData["reference"].(string)
-				if !ok {
-					log.Printf("Warning: reference is not a string, got %T: %v", paymentData["reference"], paymentData["reference"])
-					return
-				}
-				
-				transactionRecord := TransactionRecord{
-					Reference:   reference,
-					MerchantRef: merchantRef,
-					Method:      req.Method,
-					Amount:      req.Amount,
-					Status:      "UNPAID",
-					CreatedAt:   time.Now().Format(time.RFC3339),
-					OrderItems:  req.OrderItems,
-				}
-
-				// Prepend new transaction
-				existingHistory = append([]TransactionRecord{transactionRecord}, existingHistory...)
-
-				// Keep only last 50 transactions
-				if len(existingHistory) > 50 {
-					existingHistory = existingHistory[:50]
-				}
-
-				// Set cookie
-				domain := os.Getenv("DOMAIN")
-				if domain == "" {
-					domain = "shiroine.my.id"
-				}
-				historyBytes, err := json.Marshal(existingHistory)
-				if err != nil {
-					log.Printf("Failed to marshal history for cookie: %v", err)
-					return
-				}
-				setCookie(w, "paymentHistory", string(historyBytes), domain)
-			}()
-
-			// Always send success response to client since Tripay transaction succeeded
 			respondJSON(w, http.StatusOK, APIResponse{
 				Success: true,
 				Data:    paymentData,
@@ -563,31 +462,18 @@ func transactionStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	if success, ok := result["success"].(bool); ok && success {
 		if data, ok := result["data"].(map[string]interface{}); ok {
-			// Update transaction status in cookie
-			var existingHistory []TransactionRecord
-			historyJSON := getCookie(r, "paymentHistory")
-			if historyJSON != "" {
-				json.Unmarshal([]byte(historyJSON), &existingHistory)
-			}
-
-			// Update status
-			for i, transaction := range existingHistory {
-				if transaction.Reference == reference {
-					if status, ok := data["status"].(string); ok {
-						existingHistory[i].Status = status
-						existingHistory[i].UpdatedAt = time.Now().Format(time.RFC3339)
-					}
-					break
+			// Update transaction status in database
+			if db != nil && data["status"] != nil {
+				status := data["status"].(string)
+				_, err := db.Exec(`
+					UPDATE payment_history 
+					SET status = $1, updated_at = $2
+					WHERE reference = $3
+				`, status, time.Now(), reference)
+				if err != nil {
+					log.Printf("Failed to update transaction status: %v", err)
 				}
 			}
-
-			// Set cookie
-			domain := os.Getenv("DOMAIN")
-			if domain == "" {
-				domain = "shiroine.my.id"
-			}
-			historyBytes, _ := json.Marshal(existingHistory)
-			setCookie(w, "paymentHistory", string(historyBytes), domain)
 
 			respondJSON(w, http.StatusOK, APIResponse{
 				Success: true,
@@ -645,7 +531,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	if status == "PAID" {
 		log.Printf("Payment successful for reference: %v", reference)
-		
+
 		// Update payment_history table
 		if db != nil {
 			_, err := db.Exec(`
@@ -665,22 +551,22 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				FROM payment_history 
 				WHERE reference = $1
 			`, reference).Scan(&phoneNumber, &groupID, &orderItemsJSON)
-			
+
 			if err == nil {
 				// Parse order items to get plan details
 				var orderItems []map[string]interface{}
 				json.Unmarshal(orderItemsJSON, &orderItems)
-				
+
 				if len(orderItems) > 0 {
 					planName := ""
 					if name, ok := orderItems[0]["name"].(string); ok {
 						planName = name
 					}
-					
+
 					// Extract plan ID from name with improved pattern matching
 					planID := ""
 					nameLower := strings.ToLower(planName)
-					
+
 					if strings.Contains(nameLower, "user premium") {
 						// Match specific day counts to avoid ambiguity
 						if strings.Contains(nameLower, "5 day") || strings.Contains(nameLower, "7 day") {
@@ -697,10 +583,10 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 							planID = "group-1m"
 						}
 					}
-					
+
 					if planID != "" {
 						days, specialLimit, isGroup := parsePlanDetails(planID)
-						
+
 						var jid, lid string
 						if isGroup && groupID.Valid {
 							jid = groupID.String
@@ -714,14 +600,14 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 								lid = phoneNumber.String // Fallback to phone number
 							}
 						}
-						
+
 						if jid != "" && lid != "" {
 							// Check if premium already exists
 							var existingExpired sql.NullString
 							err := db.QueryRow(`
 								SELECT expired FROM premium WHERE jid = $1 AND lid = $2
 							`, jid, lid).Scan(&existingExpired)
-							
+
 							var newExpired time.Time
 							if err == sql.ErrNoRows {
 								// New premium
@@ -737,7 +623,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 							} else {
 								newExpired = time.Now().AddDate(0, 0, days)
 							}
-							
+
 							// Upsert premium
 							_, err = db.Exec(`
 								INSERT INTO premium (jid, lid, special_limit, max_special_limit, expired, last_special_reset)
@@ -749,7 +635,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 									last_special_reset = $6,
 									updated_at = CURRENT_TIMESTAMP
 							`, jid, lid, 0, specialLimit, newExpired.Format(time.RFC3339), time.Now().Format(time.RFC3339))
-							
+
 							if err != nil {
 								log.Printf("Failed to activate premium: %v", err)
 							} else {
@@ -762,7 +648,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if status == "EXPIRED" || status == "FAILED" {
 		log.Printf("Payment %v for reference: %v", status, reference)
-		
+
 		// Update payment_history table
 		if db != nil {
 			_, err := db.Exec(`
@@ -780,7 +666,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true})
 }
 
-// Payment history handler - now queries database by phone/group ID
+// Payment history handler - queries database by phone/group ID
 func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -817,16 +703,9 @@ func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	offset := (req.Page - 1) * perPage
 
 	if db == nil {
-		// Fallback to cookie-based history if database is not available
-		var history []TransactionRecord
-		historyJSON := getCookie(r, "paymentHistory")
-		if historyJSON != "" {
-			json.Unmarshal([]byte(historyJSON), &history)
-		}
-
-		respondJSON(w, http.StatusOK, APIResponse{
-			Success: true,
-			Data:    history,
+		respondJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Database not available",
 		})
 		return
 	}
@@ -845,7 +724,7 @@ func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
 			ORDER BY created_at DESC
 			LIMIT $2 OFFSET $3
 		`, req.Identifier, perPage, offset)
-		
+
 		db.QueryRow("SELECT COUNT(*) FROM payment_history WHERE group_id = $1", req.Identifier).Scan(&totalCount)
 	} else {
 		rows, err = db.Query(`
@@ -856,7 +735,7 @@ func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
 			ORDER BY created_at DESC
 			LIMIT $2 OFFSET $3
 		`, req.Identifier, perPage, offset)
-		
+
 		db.QueryRow("SELECT COUNT(*) FROM payment_history WHERE phone_number = $1", req.Identifier).Scan(&totalCount)
 	}
 
@@ -923,42 +802,6 @@ func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Get cart handler
-func getCartHandler(w http.ResponseWriter, r *http.Request) {
-	var cart interface{}
-	cartJSON := getCookie(r, "cart")
-	if cartJSON != "" {
-		json.Unmarshal([]byte(cartJSON), &cart)
-	} else {
-		cart = []interface{}{}
-	}
-
-	respondJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Data:    cart,
-	})
-}
-
-// Update cart handler
-func updateCartHandler(w http.ResponseWriter, r *http.Request) {
-	var req CartRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: "Invalid request body",
-		})
-		return
-	}
-
-	cartBytes, _ := json.Marshal(req.Items)
-	setCookie(w, "cart", string(cartBytes), "")
-
-	respondJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Message: "Cart updated successfully",
-	})
-}
-
 // 404 handler
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusNotFound, APIResponse{
@@ -970,7 +813,6 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 // Random string generator
 func randomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	// Use crypto/rand for better randomness (Go 1.20+ auto-seeds math/rand)
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = charset[rand.Intn(len(charset))]
@@ -1017,7 +859,7 @@ func initDB() error {
 // Parse plan details from plan ID
 func parsePlanDetails(planID string) (days int, specialLimit int, isGroup bool) {
 	isGroup = strings.HasPrefix(planID, "group-")
-	
+
 	switch planID {
 	// User plans - updated based on requirements
 	case "user-5d":
@@ -1197,15 +1039,6 @@ func main() {
 		}
 	})
 	mux.HandleFunc("/api/payment-history", paymentHistoryHandler)
-	mux.HandleFunc("/api/cart", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			getCartHandler(w, r)
-		} else if r.Method == http.MethodPost {
-			updateCartHandler(w, r)
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
 	mux.HandleFunc("/", notFoundHandler)
 
 	// Setup CORS
