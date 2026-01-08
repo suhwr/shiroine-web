@@ -26,10 +26,31 @@ const TRIPAY_CONFIG = {
 
 // Middleware
 app.use(helmet());
+
+// CORS configuration - allow credentials and specific origin
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL]
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    const isAllowed = allowedOrigins.some(allowedOrigin => 
+      origin.startsWith(allowedOrigin) || origin === allowedOrigin
+    );
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Allow cookies
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -182,12 +203,20 @@ app.post('/api/create-transaction', async (req, res) => {
       const limitedHistory = existingHistory.slice(0, 50);
       
       // Set cookie (no expiration as per requirement)
-      res.cookie('paymentHistory', JSON.stringify(limitedHistory), {
+      // Use root domain for cross-subdomain access
+      const cookieOptions = {
         httpOnly: false, // Allow client-side access
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year (effectively non-expiring)
-      });
+        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year (effectively non-expiring)
+      };
+      
+      // Set domain for cross-subdomain cookie sharing (e.g., .shiroine.my.id)
+      if (process.env.DOMAIN && process.env.NODE_ENV === 'production') {
+        cookieOptions.domain = `.${process.env.DOMAIN}`;
+      }
+      
+      res.cookie('paymentHistory', JSON.stringify(limitedHistory), cookieOptions);
 
       res.json({
         success: true,
@@ -248,12 +277,19 @@ app.get('/api/transaction-status/:reference', async (req, res) => {
         return transaction;
       });
       
-      res.cookie('paymentHistory', JSON.stringify(updatedHistory), {
+      const cookieOptions = {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 365 * 24 * 60 * 60 * 1000
-      });
+      };
+      
+      // Set domain for cross-subdomain cookie sharing
+      if (process.env.DOMAIN && process.env.NODE_ENV === 'production') {
+        cookieOptions.domain = `.${process.env.DOMAIN}`;
+      }
+      
+      res.cookie('paymentHistory', JSON.stringify(updatedHistory), cookieOptions);
 
       res.json({
         success: true,
