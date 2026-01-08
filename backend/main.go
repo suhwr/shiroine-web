@@ -552,16 +552,28 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				WHERE reference = $1
 			`, reference).Scan(&phoneNumber, &groupID, &orderItemsJSON)
 
-			if err == nil {
+			if err != nil {
+				log.Printf("Failed to query payment_history for reference %s: %v", reference, err)
+			} else {
+				log.Printf("Retrieved payment details: phoneNumber=%v, groupID=%v, orderItemsJSON=%s", 
+					phoneNumber.Valid, groupID.Valid, string(orderItemsJSON))
+
 				// Parse order items to get plan details
 				var orderItems []map[string]interface{}
-				json.Unmarshal(orderItemsJSON, &orderItems)
+				if err := json.Unmarshal(orderItemsJSON, &orderItems); err != nil {
+					log.Printf("Failed to unmarshal order_items: %v", err)
+				} else {
+					log.Printf("Parsed %d order items", len(orderItems))
+				}
 
-				if len(orderItems) > 0 {
+				if len(orderItems) == 0 {
+					log.Printf("No order items found in payment_history for reference %s", reference)
+				} else {
 					planName := ""
 					if name, ok := orderItems[0]["name"].(string); ok {
 						planName = name
 					}
+					log.Printf("Plan name from order_items: %s", planName)
 
 					// Extract plan ID from name with improved pattern matching
 					planID := ""
@@ -584,13 +596,17 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 
-					if planID != "" {
+					if planID == "" {
+						log.Printf("Could not determine planID from plan name: %s", planName)
+					} else {
+						log.Printf("Determined planID: %s", planID)
 						days, specialLimit, isGroup := parsePlanDetails(planID)
 
 						var jid, lid string
 						if isGroup && groupID.Valid {
 							jid = groupID.String
 							lid = groupID.String // For groups, lid = id
+							log.Printf("Group premium: jid=%s, lid=%s", jid, lid)
 						} else if phoneNumber.Valid {
 							jid = phoneNumber.String
 							// Get lid from users table
@@ -599,9 +615,14 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 								log.Printf("Failed to get lid for phone %s: %v", phoneNumber.String, err)
 								lid = phoneNumber.String // Fallback to phone number
 							}
+							log.Printf("User premium: jid=%s, lid=%s", jid, lid)
+						} else {
+							log.Printf("Neither phoneNumber nor groupID is valid")
 						}
 
-						if jid != "" && lid != "" {
+						if jid == "" || lid == "" {
+							log.Printf("Missing jid or lid - jid=%s, lid=%s", jid, lid)
+						} else {
 							// Check if premium already exists
 							var existingExpired sql.NullString
 							err := db.QueryRow(`
@@ -612,16 +633,20 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 							if err == sql.ErrNoRows {
 								// New premium
 								newExpired = time.Now().AddDate(0, 0, days)
+								log.Printf("Creating new premium entry")
 							} else if err == nil && existingExpired.Valid {
 								// Stack premium
 								currentExpired, _ := time.Parse(time.RFC3339, existingExpired.String)
 								if currentExpired.Before(time.Now()) {
 									newExpired = time.Now().AddDate(0, 0, days)
+									log.Printf("Existing premium expired, creating new from now")
 								} else {
 									newExpired = currentExpired.AddDate(0, 0, days)
+									log.Printf("Stacking premium on existing expiry: %s", currentExpired.Format(time.RFC3339))
 								}
 							} else {
 								newExpired = time.Now().AddDate(0, 0, days)
+								log.Printf("Error checking existing premium: %v, creating new", err)
 							}
 
 							// Upsert premium
@@ -639,7 +664,8 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 							if err != nil {
 								log.Printf("Failed to activate premium: %v", err)
 							} else {
-								log.Printf("Premium activated for jid=%s, lid=%s, days=%d, specialLimit=%d", jid, lid, days, specialLimit)
+								log.Printf("Premium activated for jid=%s, lid=%s, days=%d, specialLimit=%d, expired=%s", 
+									jid, lid, days, specialLimit, newExpired.Format(time.RFC3339))
 							}
 						}
 					}
