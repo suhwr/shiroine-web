@@ -6,6 +6,7 @@ import { CONTACT_INFO, PAYMENT_INFO } from '../config';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import Footer from './Footer';
+import Sidebar from './Sidebar';
 
 const Pricing = () => {
   const [language, setLanguage] = useState('id');
@@ -14,9 +15,9 @@ const Pricing = () => {
   const communityLink = React.useMemo(() => {
     const hostname = window.location.hostname;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'https://community.shiroine.my.id/';
+      return 'https://gc.shiroine.my.id/';
     }
-    return `https://community.${hostname}/`;
+    return `https://gc.${hostname}/`;
   }, []);
 
   const t = translations[language];
@@ -90,6 +91,12 @@ const Pricing = () => {
         <div className="container">
           <div className="header-content">
             <div className="logo-section">
+              <Sidebar 
+                language={language}
+                onLanguageToggle={toggleLanguage}
+                communityLink={communityLink}
+                translations={t}
+              />
               <img src="/android-chrome-192x192.png" alt="Shiroine Logo" className="logo-icon" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
               <span className="logo-text">Shiroine</span>
             </div>
