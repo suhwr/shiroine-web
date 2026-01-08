@@ -183,41 +183,48 @@ app.post('/api/create-transaction', async (req, res) => {
       const paymentData = response.data.data;
       
       // Store transaction in cookie for payment history
-      const existingHistory = req.cookies.paymentHistory 
-        ? JSON.parse(req.cookies.paymentHistory) 
-        : [];
-      
-      const transactionRecord = {
-        reference: paymentData.reference,
-        merchantRef: merchantRef,
-        method: method,
-        amount: amount,
-        status: 'UNPAID',
-        createdAt: new Date().toISOString(),
-        orderItems: orderItems
-      };
-      
-      existingHistory.unshift(transactionRecord);
-      
-      // Keep only last 50 transactions
-      const limitedHistory = existingHistory.slice(0, 50);
-      
-      // Set cookie (no expiration as per requirement)
-      // Use root domain for cross-subdomain access
-      const cookieOptions = {
-        httpOnly: false, // Allow client-side access
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year (effectively non-expiring)
-      };
-      
-      // Set domain for cross-subdomain cookie sharing (e.g., .shiroine.my.id)
-      if (process.env.DOMAIN && process.env.NODE_ENV === 'production') {
-        cookieOptions.domain = `.${process.env.DOMAIN}`;
+      // Wrap in try-catch to ensure response is sent even if cookie fails
+      try {
+        const existingHistory = req.cookies.paymentHistory 
+          ? JSON.parse(req.cookies.paymentHistory) 
+          : [];
+        
+        const transactionRecord = {
+          reference: paymentData.reference,
+          merchantRef: merchantRef,
+          method: method,
+          amount: amount,
+          status: 'UNPAID',
+          createdAt: new Date().toISOString(),
+          orderItems: orderItems
+        };
+        
+        existingHistory.unshift(transactionRecord);
+        
+        // Keep only last 50 transactions
+        const limitedHistory = existingHistory.slice(0, 50);
+        
+        // Set cookie (no expiration as per requirement)
+        // Use root domain for cross-subdomain access
+        const cookieOptions = {
+          httpOnly: false, // Allow client-side access
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year (effectively non-expiring)
+        };
+        
+        // Set domain for cross-subdomain cookie sharing (e.g., .shiroine.my.id)
+        if (process.env.DOMAIN && process.env.NODE_ENV === 'production') {
+          cookieOptions.domain = `.${process.env.DOMAIN}`;
+        }
+        
+        res.cookie('paymentHistory', JSON.stringify(limitedHistory), cookieOptions);
+      } catch (cookieError) {
+        // Log error but don't fail the transaction since Tripay succeeded
+        console.error('Error setting payment history cookie:', cookieError);
       }
-      
-      res.cookie('paymentHistory', JSON.stringify(limitedHistory), cookieOptions);
 
+      // Always send success response to client since Tripay transaction succeeded
       res.json({
         success: true,
         data: paymentData,
