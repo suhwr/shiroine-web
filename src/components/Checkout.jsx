@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MessageCircle, ArrowLeft, Check, Loader2, Globe } from 'lucide-react';
 import { translations } from '../translations';
-import { TRIPAY_CONFIG, CONTACT_INFO } from '../config';
+import { PAYMENT_API_CONFIG, CONTACT_INFO } from '../config';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
@@ -10,30 +10,6 @@ import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { toast } from 'sonner';
 import axios from 'axios';
-import CryptoJS from 'crypto-js';
-
-/**
- * Utility function to generate Tripay signature
- * 
- * ⚠️ SECURITY WARNING: This function is currently used client-side for development/testing.
- * In PRODUCTION, signature generation MUST be moved to a backend server to protect
- * your Tripay private key. Client-side signature generation exposes your credentials
- * and is a security risk.
- * 
- * See TRIPAY_INTEGRATION.md for recommended backend implementation.
- * 
- * TODO: Move to backend before production deployment
- */
-const generateTripaySignature = (merchantCode, merchantRef, amount, privateKey) => {
-  // Prevent usage in production builds without explicit override
-  if (process.env.NODE_ENV === 'production' && !process.env.REACT_APP_ALLOW_CLIENT_SIGNATURE) {
-    console.error('Client-side signature generation is disabled in production. Please implement backend signature generation.');
-    throw new Error('Client-side signature generation not allowed in production');
-  }
-  
-  const data = merchantCode + merchantRef + amount;
-  return CryptoJS.HmacSHA256(data, privateKey).toString();
-};
 
 const Checkout = () => {
   const [language, setLanguage] = useState('id');
@@ -75,30 +51,24 @@ const Checkout = () => {
     return parseInt(priceStr.replace(/[^0-9]/g, ''), 10);
   };
 
-  // Fetch available payment channels from Tripay
+  // Fetch available payment channels from backend (which proxies to Tripay)
   useEffect(() => {
     const fetchPaymentChannels = async () => {
       try {
         setLoading(true);
-        
-        // Check if API key is configured
-        if (!TRIPAY_CONFIG.apiKey) {
-          console.warn('Tripay API key not configured');
-          setPaymentChannels([]);
-          setLoading(false);
-          return;
-        }
 
-        const response = await axios.get(`${TRIPAY_CONFIG.apiUrl}/merchant/payment-channel`, {
-          headers: {
-            'Authorization': `Bearer ${TRIPAY_CONFIG.apiKey}`,
+        const response = await axios.get(
+          `${PAYMENT_API_CONFIG.baseUrl}${PAYMENT_API_CONFIG.endpoints.paymentChannels}`,
+          {
+            withCredentials: true, // Include cookies
           }
-        });
+        );
 
         if (response.data.success) {
-          // Filter only active channels
-          const activeChannels = response.data.data.filter(channel => channel.active);
-          setPaymentChannels(activeChannels);
+          setPaymentChannels(response.data.data);
+        } else {
+          console.warn('Failed to load payment channels:', response.data.message);
+          setPaymentChannels([]);
         }
       } catch (error) {
         console.error('Error fetching payment channels:', error);
@@ -112,7 +82,7 @@ const Checkout = () => {
     fetchPaymentChannels();
   }, [language]);
 
-  // Create transaction with Tripay
+  // Create transaction via backend API
   const handleProceedPayment = async () => {
     // Validate inputs
     if (!whatsappNumber) {
@@ -125,61 +95,52 @@ const Checkout = () => {
       return;
     }
 
-    if (!TRIPAY_CONFIG.apiKey || !TRIPAY_CONFIG.privateKey || !TRIPAY_CONFIG.merchantCode) {
-      toast.error(t.paymentConfigError || (language === 'id' 
-        ? 'Konfigurasi pembayaran belum lengkap. Silakan hubungi admin.' 
-        : 'Payment configuration incomplete. Please contact admin.'));
-      return;
-    }
-
     try {
       setProcessing(true);
 
       const amount = getNumericPrice(planDetails.price);
-      const merchantRef = `PREMIUM-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       
-      // Prepare transaction data according to Tripay documentation
+      // Prepare transaction data for backend
       const transactionData = {
         method: selectedPaymentMethod,
-        merchant_ref: merchantRef,
         amount: amount,
-        customer_name: `Customer-${whatsappNumber}`, // Format: Customer-628123456789
-        customer_email: `noreply@shiroine.my.id`, // Using project domain
-        customer_phone: whatsappNumber,
-        order_items: [
+        customerName: `Customer-${whatsappNumber}`,
+        customerPhone: whatsappNumber,
+        orderItems: [
           {
             name: `${planDetails.type} - ${planDetails.duration}`,
             price: amount,
             quantity: 1,
           }
         ],
-        return_url: `${window.location.origin}/pricing`, // Redirect back to pricing on completion
-        expired_time: (Math.floor(Date.now() / 1000) + (24 * 60 * 60)), // 24 hours
-        signature: generateTripaySignature(TRIPAY_CONFIG.merchantCode, merchantRef, amount, TRIPAY_CONFIG.privateKey)
+        returnUrl: `${window.location.origin}/pricing`,
       };
 
-      // Create transaction
+      // Create transaction via backend
       const response = await axios.post(
-        `${TRIPAY_CONFIG.apiUrl}/transaction/create`,
+        `${PAYMENT_API_CONFIG.baseUrl}${PAYMENT_API_CONFIG.endpoints.createTransaction}`,
         transactionData,
         {
           headers: {
-            'Authorization': `Bearer ${TRIPAY_CONFIG.apiKey}`,
             'Content-Type': 'application/json',
-          }
+          },
+          withCredentials: true, // Include cookies for payment history
         }
       );
 
       if (response.data.success) {
         const paymentData = response.data.data;
         
+        toast.success(language === 'id' ? 'Transaksi berhasil dibuat!' : 'Transaction created successfully!');
+        
         // Redirect to payment page
         if (paymentData.checkout_url) {
-          window.location.href = paymentData.checkout_url;
+          // Give user a moment to see the success message
+          setTimeout(() => {
+            window.location.href = paymentData.checkout_url;
+          }, 1000);
         } else {
-          // For direct payment methods, show success message
-          toast.success(language === 'id' ? 'Transaksi berhasil dibuat!' : 'Transaction created successfully!');
-          // Optionally navigate back to pricing or show instructions
+          // For direct payment methods, navigate back to pricing
           setTimeout(() => navigate('/pricing'), 2000);
         }
       } else {

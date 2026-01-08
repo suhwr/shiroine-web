@@ -1,23 +1,40 @@
 # Shiroine Bot Website
 
-This is the official website for Shiroine WhatsApp Bot, built with React.
+This is the official website for Shiroine WhatsApp Bot, built with React and a secure backend for payment processing.
+
+## Architecture
+
+The project consists of two main components:
+
+1. **Frontend** (React) - User interface, hosted on Vercel/Netlify
+2. **Backend** (Node.js/Express) - Payment gateway integration, hosted on VPS/cloud platform
 
 ## Features
 
+### Frontend
 - **Home Page**: Overview of bot features and capabilities
 - **Pricing Page**: Premium plan options for users and groups
-- **Checkout Page**: Integrated payment system with Tripay gateway
+- **Checkout Page**: Secure payment interface
+- **Static Pages**: Privacy Policy, Terms of Service, About Tripay
+- **Cookie-based Storage**: Payment history and cart management (no login required)
 - **Responsive Design**: Mobile-friendly interface
 - **Multi-language Support**: Indonesian and English
 
+### Backend
+- **Secure Tripay Integration**: Server-side signature generation
+- **Payment Processing**: Create and manage transactions
+- **Callback Handling**: Automatic payment verification
+- **Cookie Management**: Non-expiring storage for payment history
+- **API Endpoints**: RESTful API for frontend communication
+
 ## Payment Integration
 
-The website includes integration with [Tripay Payment Gateway](https://tripay.co.id) for processing premium plan purchases. Users can pay using:
+The website uses [Tripay Payment Gateway](https://tripay.co.id) for processing premium purchases through a secure backend server. Users can pay using:
 - Virtual Account (Bank Transfer)
 - E-Wallet (QRIS, GoPay, OVO, DANA, etc.)
 - Retail Outlets (Alfamart, Indomaret, etc.)
 
-**Important**: For production deployment, you need to configure Tripay API credentials. See [TRIPAY_INTEGRATION.md](./TRIPAY_INTEGRATION.md) for detailed setup instructions.
+**Security Note**: All payment requests go through the backend server at `pay.<your-domain>`. The frontend never directly communicates with Tripay, keeping your API credentials secure.
 
 ## Getting Started
 
@@ -26,122 +43,189 @@ The website includes integration with [Tripay Payment Gateway](https://tripay.co
 - Node.js 14+ 
 - npm or yarn
 
-### Installation
+### Frontend Installation
 
 1. Clone the repository
+   ```bash
+   git clone https://github.com/suhwr/shiroine-web.git
+   cd shiroine-web
+   ```
+
 2. Install dependencies:
    ```bash
    npm install --legacy-peer-deps
    ```
-3. Copy `.env.example` to `.env` and configure your environment variables
+
+3. Copy `.env.example` to `.env` and configure:
+   ```env
+   REACT_APP_BACKEND_URL=https://shiroine.my.id
+   WDS_SOCKET_PORT=443
+   REACT_APP_ENABLE_VISUAL_EDITS=false
+   ENABLE_HEALTH_CHECK=false
+   ```
+
 4. Start the development server:
    ```bash
    npm start
    ```
 
+### Backend Installation
+
+1. Navigate to backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Copy `.env.example` to `.env` and configure:
+   ```env
+   TRIPAY_MODE=sandbox
+   TRIPAY_API_KEY=your_tripay_api_key
+   TRIPAY_PRIVATE_KEY=your_tripay_private_key
+   TRIPAY_MERCHANT_CODE=your_merchant_code
+   PORT=3001
+   NODE_ENV=development
+   FRONTEND_URL=http://localhost:3000
+   DOMAIN=localhost
+   ```
+
+4. Start the backend server:
+   ```bash
+   npm start
+   # or for development with auto-reload:
+   npm run dev
+   ```
+
 ## Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
-
+### Frontend (.env)
 ```env
 REACT_APP_BACKEND_URL=https://shiroine.my.id
-REACT_APP_TRIPAY_MODE=sandbox
-REACT_APP_TRIPAY_API_KEY=your_api_key
-REACT_APP_TRIPAY_PRIVATE_KEY=your_private_key
-REACT_APP_TRIPAY_MERCHANT_CODE=your_merchant_code
+WDS_SOCKET_PORT=443
+REACT_APP_ENABLE_VISUAL_EDITS=false
+ENABLE_HEALTH_CHECK=false
 ```
+
+### Backend (.env)
+See `backend/.env.example` for all available options.
 
 ## Available Scripts
 
-In the project directory, you can run:
+### Frontend Scripts
 
-### `npm start`
+#### `npm start`
+Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+#### `npm run build`
+Builds the app for production to the `build` folder.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+#### `npm test`
+Launches the test runner in interactive watch mode.
 
-### `npm test`
+### Backend Scripts
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+#### `npm start`
+Starts the backend server in production mode.
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+#### `npm run dev`
+Starts the backend server with nodemon for development.
 
 ## Project Structure
 
 ```
-src/
-├── components/
-│   ├── Home.jsx          # Landing page
-│   ├── Pricing.jsx       # Premium plans page
-│   ├── Checkout.jsx      # Payment checkout page
-│   └── ui/               # Reusable UI components
-├── config.js             # Configuration constants
-├── translations.js       # Multi-language support
-└── App.js                # Main app component with routing
+shiroine-web/
+├── src/                      # Frontend source
+│   ├── components/
+│   │   ├── Home.jsx          # Landing page
+│   │   ├── Pricing.jsx       # Premium plans page
+│   │   ├── Checkout.jsx      # Payment checkout page
+│   │   ├── PrivacyPolicy.jsx # Privacy policy page
+│   │   ├── TermsOfService.jsx# Terms of service page
+│   │   ├── AboutTripay.jsx   # About Tripay page
+│   │   └── ui/               # Reusable UI components
+│   ├── lib/
+│   │   ├── cookies.js        # Cookie utilities
+│   │   └── utils.js          # Helper functions
+│   ├── config.js             # Configuration constants
+│   ├── translations.js       # Multi-language support
+│   └── App.js                # Main app component with routing
+│
+├── backend/                  # Backend server
+│   ├── server.js             # Express server
+│   ├── package.json          # Backend dependencies
+│   ├── .env.example          # Environment variables template
+│   └── README.md             # Backend documentation
+│
+├── public/                   # Static files
+├── DEPLOYMENT.md             # Deployment guide
+├── TRIPAY_INTEGRATION.md     # Tripay setup guide
+└── README.md                 # This file
 ```
+
+## Cookie-based Storage
+
+The application uses non-expiring cookies to store:
+- **Payment History**: Last 50 transactions with status
+- **Shopping Cart**: Cart items (future feature)
+
+No login is required - cookies persist for 1 year to provide a seamless experience.
+
+## API Endpoints
+
+The backend provides the following endpoints:
+
+- `GET /health` - Health check
+- `GET /api/payment-channels` - Get available payment methods
+- `POST /api/create-transaction` - Create payment transaction
+- `GET /api/transaction-status/:reference` - Check payment status
+- `POST /callback` - Tripay payment callback
+- `GET /api/payment-history` - Get payment history from cookies
+- `GET /api/cart` - Get cart items
+- `POST /api/cart` - Update cart items
+
+## Deployment
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+### Quick Deployment Summary
+
+**Frontend**: Deploy to Vercel or Netlify
+- Auto-deploys on git push
+- Set environment variables in platform dashboard
+
+**Backend**: Deploy to VPS or cloud platform
+- Must be on a separate server (not Vercel/Netlify)
+- Configure domain: `pay.<your-domain>`
+- Setup SSL certificate
+- Use PM2 for process management
 
 ## Documentation
 
-- [Tripay Integration Guide](./TRIPAY_INTEGRATION.md) - Payment gateway setup and configuration
+- [Deployment Guide](./DEPLOYMENT.md) - Complete deployment instructions
+- [Tripay Integration Guide](./TRIPAY_INTEGRATION.md) - Payment gateway setup
+- [Backend Documentation](./backend/README.md) - Backend server details
 
-## License
+## Security
 
-This project is part of the Shiroine Bot ecosystem.
+- ✅ Backend handles all Tripay API calls
+- ✅ Signature generation server-side only
+- ✅ Private keys never exposed to frontend
+- ✅ CORS protection
+- ✅ Rate limiting
+- ✅ Helmet security headers
+- ✅ Callback signature verification
 
 ## Support
 
 For questions or issues, contact:
 - Email: sherdi240@gmail.com
 - WhatsApp: +62 831-5666-9609
+
+## License
+
+This project is part of the Shiroine Bot ecosystem.
+
