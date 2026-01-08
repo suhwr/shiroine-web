@@ -555,20 +555,20 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("Failed to query payment_history for reference %s: %v", reference, err)
 			} else {
-				log.Printf("Retrieved payment details: phoneNumber=%v, groupID=%v, orderItemsJSON=%s", 
-					phoneNumber.Valid, groupID.Valid, string(orderItemsJSON))
+				log.Printf("Retrieved payment details: phoneNumber=%v, groupID=%v, orderItemsSize=%d bytes", 
+					phoneNumber.Valid, groupID.Valid, len(orderItemsJSON))
 
 				// Parse order items to get plan details
 				var orderItems []map[string]interface{}
-				if err := json.Unmarshal(orderItemsJSON, &orderItems); err != nil {
-					log.Printf("Failed to unmarshal order_items: %v", err)
+				unmarshalErr := json.Unmarshal(orderItemsJSON, &orderItems)
+				if unmarshalErr != nil {
+					log.Printf("Failed to unmarshal order_items: %v", unmarshalErr)
 				} else {
 					log.Printf("Parsed %d order items", len(orderItems))
-				}
 
-				if len(orderItems) == 0 {
-					log.Printf("No order items found in payment_history for reference %s", reference)
-				} else {
+					if len(orderItems) == 0 {
+						log.Printf("No order items found in payment_history for reference %s", reference)
+					} else {
 					planName := ""
 					if name, ok := orderItems[0]["name"].(string); ok {
 						planName = name
@@ -669,6 +669,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 							}
 						}
 					}
+				}
 				}
 			}
 		}
