@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageCircle, Globe, Heart, Users, Zap, Shield, Code, Star } from 'lucide-react';
+import { MessageCircle, Globe, Heart, Users, Zap, Shield, Code, Star, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { translations } from '../translations';
@@ -224,9 +224,6 @@ const AboutUs = () => {
   };
 
   const currentContent = content[language];
-
-  // Import Download icon
-  const Download = require('lucide-react').Download;
 
   return (
     <div className="home-container">
