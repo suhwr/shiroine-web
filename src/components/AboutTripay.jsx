@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { MessageCircle, Globe, CreditCard, Shield, Zap, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { Card } from './ui/card';
 import { translations } from '../translations';
+import Footer from './Footer';
 
 const AboutTripay = () => {
   const [language, setLanguage] = useState('id');
@@ -238,36 +238,74 @@ const AboutTripay = () => {
             <p className="text-gray-400 mb-8">{currentContent.intro}</p>
 
             {/* Why Tripay */}
-            <Card className="p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-6 text-white">{currentContent.whyTripay.title}</h2>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '24px',
+                color: 'var(--text-primary)'
+              }}>{currentContent.whyTripay.title}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {currentContent.whyTripay.reasons.map((reason, index) => {
                   const Icon = reason.icon;
                   return (
                     <div key={index} className="flex gap-4">
                       <div className="flex-shrink-0">
-                        <Icon className="text-green-500" size={32} />
+                        <Icon style={{ color: 'var(--accent-primary)' }} size={32} />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold mb-2 text-white">{reason.title}</h3>
-                        <p className="text-gray-400">{reason.description}</p>
+                        <h3 style={{
+                          fontSize: '18px',
+                          fontWeight: '600',
+                          marginBottom: '8px',
+                          color: 'var(--text-primary)'
+                        }}>{reason.title}</h3>
+                        <p style={{ color: 'var(--text-secondary)' }}>{reason.description}</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </Card>
+            </div>
 
             {/* Payment Methods */}
-            <Card className="p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-6 text-white">{currentContent.paymentMethods.title}</h2>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '24px',
+                color: 'var(--text-primary)'
+              }}>{currentContent.paymentMethods.title}</h2>
               <div className="space-y-6">
                 {currentContent.paymentMethods.methods.map((method, index) => (
                   <div key={index}>
-                    <h3 className="text-lg font-semibold mb-3 text-green-500">{method.category}</h3>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      marginBottom: '12px',
+                      color: 'var(--accent-primary)'
+                    }}>{method.category}</h3>
                     <div className="flex flex-wrap gap-2">
                       {method.options.map((option, idx) => (
-                        <span key={idx} className="px-3 py-1 bg-gray-800 rounded-full text-sm text-gray-300">
+                        <span key={idx} style={{
+                          padding: '4px 12px',
+                          background: 'var(--bg-tertiary)',
+                          borderRadius: '9999px',
+                          fontSize: '14px',
+                          color: 'var(--text-secondary)'
+                        }}>
                           {option}
                         </span>
                       ))}
@@ -275,50 +313,94 @@ const AboutTripay = () => {
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
 
             {/* How It Works */}
-            <Card className="p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-6 text-white">{currentContent.howItWorks.title}</h2>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '24px',
+                color: 'var(--text-primary)'
+              }}>{currentContent.howItWorks.title}</h2>
               <ol className="space-y-3">
                 {currentContent.howItWorks.steps.map((step, index) => (
                   <li key={index} className="flex gap-3">
-                    <span className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center font-bold text-black">
+                    <span style={{
+                      width: '32px',
+                      height: '32px',
+                      background: 'var(--accent-primary)',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: '600',
+                      color: 'var(--bg-primary)',
+                      flexShrink: 0
+                    }}>
                       {index + 1}
                     </span>
-                    <span className="text-gray-300 pt-1">{step}</span>
+                    <span style={{ color: 'var(--text-secondary)', paddingTop: '4px' }}>{step}</span>
                   </li>
                 ))}
               </ol>
-            </Card>
+            </div>
 
             {/* Security */}
-            <Card className="p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-4 text-white">{currentContent.security.title}</h2>
-              <p className="text-gray-300 mb-4">{currentContent.security.description}</p>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '16px',
+                color: 'var(--text-primary)'
+              }}>{currentContent.security.title}</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>{currentContent.security.description}</p>
               <ul className="space-y-2">
                 {currentContent.security.features.map((feature, index) => (
-                  <li key={index} className="flex gap-3 text-gray-400">
-                    <CheckCircle className="flex-shrink-0 text-green-500" size={20} />
+                  <li key={index} className="flex gap-3" style={{ color: 'var(--text-secondary)' }}>
+                    <CheckCircle style={{ color: 'var(--accent-primary)', flexShrink: 0 }} size={20} />
                     <span>{feature}</span>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
 
             {/* Support */}
-            <Card className="p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-4 text-white">{currentContent.support.title}</h2>
-              <p className="text-gray-300 mb-4">{currentContent.support.description}</p>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
+              padding: '24px',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '16px',
+                color: 'var(--text-primary)'
+              }}>{currentContent.support.title}</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>{currentContent.support.description}</p>
               <ul className="space-y-2">
                 {currentContent.support.options.map((option, index) => (
-                  <li key={index} className="flex gap-3 text-gray-400">
-                    <span className="text-green-500">•</span>
+                  <li key={index} className="flex gap-3" style={{ color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--accent-primary)' }}>•</span>
                     <span>{option}</span>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
 
             <div className="mt-8 text-center flex gap-4 justify-center">
               <Button onClick={() => navigate('/pricing')} className="btn-primary">
@@ -331,6 +413,8 @@ const AboutTripay = () => {
           </div>
         </div>
       </section>
+
+      <Footer language={language} />
     </div>
   );
 };

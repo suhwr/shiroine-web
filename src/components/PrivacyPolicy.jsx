@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { MessageCircle, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { Card } from './ui/card';
 import { translations } from '../translations';
+import Footer from './Footer';
 
 const PrivacyPolicy = () => {
   const [language, setLanguage] = useState('id');
@@ -146,10 +146,24 @@ const PrivacyPolicy = () => {
 
             <div className="space-y-6">
               {currentContent.sections.map((section, index) => (
-                <Card key={index} className="p-6">
-                  <h2 className="text-xl font-bold mb-4 text-white">{section.title}</h2>
-                  <p className="text-gray-300 whitespace-pre-line">{section.content}</p>
-                </Card>
+                <div key={index} style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '12px',
+                  padding: '24px'
+                }}>
+                  <h2 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    marginBottom: '16px',
+                    color: 'var(--text-primary)'
+                  }}>{section.title}</h2>
+                  <p style={{
+                    color: 'var(--text-secondary)',
+                    whiteSpace: 'pre-line',
+                    lineHeight: '1.6'
+                  }}>{section.content}</p>
+                </div>
               ))}
             </div>
 
@@ -161,6 +175,8 @@ const PrivacyPolicy = () => {
           </div>
         </div>
       </section>
+
+      <Footer language={language} />
     </div>
   );
 };
