@@ -423,40 +423,63 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Also save to cookie for backward compatibility (temporary)
-			var existingHistory []TransactionRecord
-			historyJSON := getCookie(r, "paymentHistory")
-			if historyJSON != "" {
-				json.Unmarshal([]byte(historyJSON), &existingHistory)
-			}
+			// Try to save to cookie for backward compatibility (temporary)
+			// Wrap in anonymous function to ensure response is sent even if cookie fails
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("Panic while setting cookie: %v", r)
+					}
+				}()
+				
+				var existingHistory []TransactionRecord
+				historyJSON := getCookie(r, "paymentHistory")
+				if historyJSON != "" {
+					if err := json.Unmarshal([]byte(historyJSON), &existingHistory); err != nil {
+						log.Printf("Failed to unmarshal existing history: %v", err)
+						existingHistory = []TransactionRecord{}
+					}
+				}
 
-			// Create transaction record
-			transactionRecord := TransactionRecord{
-				Reference:   paymentData["reference"].(string),
-				MerchantRef: merchantRef,
-				Method:      req.Method,
-				Amount:      req.Amount,
-				Status:      "UNPAID",
-				CreatedAt:   time.Now().Format(time.RFC3339),
-				OrderItems:  req.OrderItems,
-			}
+				// Create transaction record
+				reference, ok := paymentData["reference"].(string)
+				if !ok {
+					log.Printf("Warning: reference is not a string")
+					return
+				}
+				
+				transactionRecord := TransactionRecord{
+					Reference:   reference,
+					MerchantRef: merchantRef,
+					Method:      req.Method,
+					Amount:      req.Amount,
+					Status:      "UNPAID",
+					CreatedAt:   time.Now().Format(time.RFC3339),
+					OrderItems:  req.OrderItems,
+				}
 
-			// Prepend new transaction
-			existingHistory = append([]TransactionRecord{transactionRecord}, existingHistory...)
+				// Prepend new transaction
+				existingHistory = append([]TransactionRecord{transactionRecord}, existingHistory...)
 
-			// Keep only last 50 transactions
-			if len(existingHistory) > 50 {
-				existingHistory = existingHistory[:50]
-			}
+				// Keep only last 50 transactions
+				if len(existingHistory) > 50 {
+					existingHistory = existingHistory[:50]
+				}
 
-			// Set cookie
-			domain := os.Getenv("DOMAIN")
-			if domain == "" {
-				domain = "shiroine.my.id"
-			}
-			historyBytes, _ := json.Marshal(existingHistory)
-			setCookie(w, "paymentHistory", string(historyBytes), domain)
+				// Set cookie
+				domain := os.Getenv("DOMAIN")
+				if domain == "" {
+					domain = "shiroine.my.id"
+				}
+				historyBytes, err := json.Marshal(existingHistory)
+				if err != nil {
+					log.Printf("Failed to marshal history for cookie: %v", err)
+					return
+				}
+				setCookie(w, "paymentHistory", string(historyBytes), domain)
+			}()
 
+			// Always send success response to client since Tripay transaction succeeded
 			respondJSON(w, http.StatusOK, APIResponse{
 				Success: true,
 				Data:    paymentData,
