@@ -905,6 +905,12 @@ body {
   }
 }
 
+/* Checkout Page Styles */
+.checkout-card {
+  background: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+
 /* Sidebar Styles */
 .sidebar-menu-button {
   display: none;
