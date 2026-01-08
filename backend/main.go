@@ -282,10 +282,10 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare transaction data
 	transactionData := map[string]interface{}{
-		"method":        req.Method,
-		"merchant_ref":  merchantRef,
-		"amount":        req.Amount,
-		"customer_name": customerName,
+		"method":         req.Method,
+		"merchant_ref":   merchantRef,
+		"amount":         req.Amount,
+		"customer_name":  customerName,
 		"customer_email": fmt.Sprintf("noreply@%s", domain),
 		"customer_phone": req.CustomerPhone,
 		"order_items":    req.OrderItems,
@@ -367,14 +367,14 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 					INSERT INTO payment_history 
 					(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
 					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-				`, 
-					paymentData["reference"], 
-					merchantRef, 
+				`,
+					paymentData["reference"],
+					merchantRef,
 					phoneNumber,
 					groupID,
-					customerName, 
-					req.Method, 
-					req.Amount, 
+					customerName,
+					req.Method,
+					req.Amount,
 					"UNPAID",
 					orderItemsJSON,
 					time.Now(),
@@ -563,7 +563,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				if groupID.Valid {
 					groupStr = groupID.String
 				}
-				log.Printf("Retrieved payment details: phoneNumber=%s, groupID=%s, orderItemsSize=%d bytes", 
+				log.Printf("Retrieved payment details: phoneNumber=%s, groupID=%s, orderItemsSize=%d bytes",
 					phoneStr, groupStr, len(orderItemsJSON))
 
 				// Parse order items to get plan details
@@ -577,88 +577,88 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					if len(orderItems) == 0 {
 						log.Printf("No order items found in payment_history for reference %s", reference)
 					} else {
-					planName := ""
-					if name, ok := orderItems[0]["name"].(string); ok {
-						planName = name
-					}
-					log.Printf("Plan name from order_items: %s", planName)
-
-					// Extract plan ID from name with improved pattern matching
-					planID := ""
-					nameLower := strings.ToLower(planName)
-
-					if strings.Contains(nameLower, "user premium") {
-						// Match specific day counts to avoid ambiguity
-						if strings.Contains(nameLower, "5 day") || strings.Contains(nameLower, "7 day") {
-							planID = "user-5d"
-						} else if strings.Contains(nameLower, "15 day") {
-							planID = "user-15d"
-						} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "1 month") {
-							planID = "user-1m"
+						planName := ""
+						if name, ok := orderItems[0]["name"].(string); ok {
+							planName = name
 						}
-					} else if strings.Contains(nameLower, "group premium") {
-						if strings.Contains(nameLower, "15 day") {
-							planID = "group-15d"
-						} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "1 month") {
-							planID = "group-1m"
-						}
-					}
+						log.Printf("Plan name from order_items: %s", planName)
 
-					if planID == "" {
-						log.Printf("Could not determine planID from plan name: %s", planName)
-					} else {
-						log.Printf("Determined planID: %s", planID)
-						days, specialLimit, isGroup := parsePlanDetails(planID)
+						// Extract plan ID from name with improved pattern matching
+						planID := ""
+						nameLower := strings.ToLower(planName)
 
-						var jid, lid string
-						if isGroup && groupID.Valid {
-							jid = groupID.String
-							lid = groupID.String // For groups, lid = id
-							log.Printf("Group premium: jid=%s, lid=%s", jid, lid)
-						} else if phoneNumber.Valid {
-							jid = phoneNumber.String
-							// Get lid from users table
-							err = db.QueryRow("SELECT lid FROM users WHERE phone_number = $1", phoneNumber.String).Scan(&lid)
-							if err != nil {
-								log.Printf("Failed to get lid for phone %s: %v", phoneNumber.String, err)
-								lid = phoneNumber.String // Fallback to phone number
+						if strings.Contains(nameLower, "user premium") {
+							// Match specific day counts to avoid ambiguity
+							if strings.Contains(nameLower, "5 day") || strings.Contains(nameLower, "5 hari") {
+								planID = "user-5d"
+							} else if strings.Contains(nameLower, "15 day") || strings.Contains(nameLower, "15 hari") {
+								planID = "user-15d"
+							} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "30 hari") || strings.Contains(nameLower, "1 month") || strings.Contains(nameLower, "1 bulan") {
+								planID = "user-1m"
 							}
-							log.Printf("User premium: jid=%s, lid=%s", jid, lid)
-						} else {
-							log.Printf("Neither phoneNumber nor groupID is valid")
+						} else if strings.Contains(nameLower, "group premium") || strings.Contains(nameLower, "grup premium") {
+							if strings.Contains(nameLower, "15 day") || strings.Contains(nameLower, "15 hari") {
+								planID = "group-15d"
+							} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "30 hari") || strings.Contains(nameLower, "1 month") || strings.Contains(nameLower, "1 bulan") {
+								planID = "group-1m"
+							}
 						}
 
-						if jid == "" || lid == "" {
-							log.Printf("Missing jid or lid - jid=%s, lid=%s", jid, lid)
+						if planID == "" {
+							log.Printf("Could not determine planID from plan name: %s", planName)
 						} else {
-							// Check if premium already exists
-							var existingExpired sql.NullString
-							err := db.QueryRow(`
+							log.Printf("Determined planID: %s", planID)
+							days, specialLimit, isGroup := parsePlanDetails(planID)
+
+							var jid, lid string
+							if isGroup && groupID.Valid {
+								jid = groupID.String
+								lid = groupID.String // For groups, lid = id
+								log.Printf("Group premium: jid=%s, lid=%s", jid, lid)
+							} else if phoneNumber.Valid {
+								jid = phoneNumber.String
+								// Get lid from users table
+								err = db.QueryRow("SELECT lid FROM users WHERE phone_number = $1", phoneNumber.String).Scan(&lid)
+								if err != nil {
+									log.Printf("Failed to get lid for phone %s: %v", phoneNumber.String, err)
+									lid = phoneNumber.String // Fallback to phone number
+								}
+								log.Printf("User premium: jid=%s, lid=%s", jid, lid)
+							} else {
+								log.Printf("Neither phoneNumber nor groupID is valid")
+							}
+
+							if jid == "" || lid == "" {
+								log.Printf("Missing jid or lid - jid=%s, lid=%s", jid, lid)
+							} else {
+								// Check if premium already exists
+								var existingExpired sql.NullString
+								err := db.QueryRow(`
 								SELECT expired FROM premium WHERE jid = $1 AND lid = $2
 							`, jid, lid).Scan(&existingExpired)
 
-							var newExpired time.Time
-							if err == sql.ErrNoRows {
-								// New premium
-								newExpired = time.Now().AddDate(0, 0, days)
-								log.Printf("Creating new premium entry")
-							} else if err == nil && existingExpired.Valid {
-								// Stack premium
-								currentExpired, _ := time.Parse(time.RFC3339, existingExpired.String)
-								if currentExpired.Before(time.Now()) {
+								var newExpired time.Time
+								if err == sql.ErrNoRows {
+									// New premium
 									newExpired = time.Now().AddDate(0, 0, days)
-									log.Printf("Existing premium expired, creating new from now")
+									log.Printf("Creating new premium entry")
+								} else if err == nil && existingExpired.Valid {
+									// Stack premium
+									currentExpired, _ := time.Parse(time.RFC3339, existingExpired.String)
+									if currentExpired.Before(time.Now()) {
+										newExpired = time.Now().AddDate(0, 0, days)
+										log.Printf("Existing premium expired, creating new from now")
+									} else {
+										newExpired = currentExpired.AddDate(0, 0, days)
+										log.Printf("Stacking premium on existing expiry: %s", currentExpired.Format(time.RFC3339))
+									}
 								} else {
-									newExpired = currentExpired.AddDate(0, 0, days)
-									log.Printf("Stacking premium on existing expiry: %s", currentExpired.Format(time.RFC3339))
+									newExpired = time.Now().AddDate(0, 0, days)
+									log.Printf("Error checking existing premium: %v, creating new", err)
 								}
-							} else {
-								newExpired = time.Now().AddDate(0, 0, days)
-								log.Printf("Error checking existing premium: %v, creating new", err)
-							}
 
-							// Upsert premium
-							_, err = db.Exec(`
+								// Upsert premium
+								_, err = db.Exec(`
 								INSERT INTO premium (jid, lid, special_limit, max_special_limit, expired, last_special_reset)
 								VALUES ($1, $2, $3, $4, $5, $6)
 								ON CONFLICT (jid, lid) DO UPDATE SET
@@ -669,15 +669,15 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 									updated_at = CURRENT_TIMESTAMP
 							`, jid, lid, 0, specialLimit, newExpired.Format(time.RFC3339), time.Now().Format(time.RFC3339))
 
-							if err != nil {
-								log.Printf("Failed to activate premium: %v", err)
-							} else {
-								log.Printf("Premium activated for jid=%s, lid=%s, days=%d, specialLimit=%d, expired=%s", 
-									jid, lid, days, specialLimit, newExpired.Format(time.RFC3339))
+								if err != nil {
+									log.Printf("Failed to activate premium: %v", err)
+								} else {
+									log.Printf("Premium activated for jid=%s, lid=%s, days=%d, specialLimit=%d, expired=%s",
+										jid, lid, days, specialLimit, newExpired.Format(time.RFC3339))
+								}
 							}
 						}
 					}
-				}
 				}
 			}
 		}
@@ -792,7 +792,7 @@ func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
 		var createdAt, updatedAt time.Time
 		var paidAt sql.NullTime
 
-		err := rows.Scan(&reference, &merchantRef, &customerName, &method, &amount, 
+		err := rows.Scan(&reference, &merchantRef, &customerName, &method, &amount,
 			&status, &orderItemsJSON, &createdAt, &updatedAt, &paidAt)
 		if err != nil {
 			log.Printf("Row scan error: %v", err)
@@ -898,7 +898,7 @@ func parsePlanDetails(planID string) (days int, specialLimit int, isGroup bool) 
 	switch planID {
 	// User plans - updated based on requirements
 	case "user-5d":
-		return 7, 5, false  // 7 days, 5 special limit
+		return 7, 5, false // 7 days, 5 special limit
 	case "user-15d":
 		return 15, 10, false // 15 days, 10 special limit
 	case "user-1m":
@@ -964,9 +964,9 @@ func verifyUserHandler(w http.ResponseWriter, r *http.Request) {
 			Success: true,
 			Message: fmt.Sprintf("Apakah grup kamu bernama \"%s\"?", groupName),
 			Data: map[string]interface{}{
-				"type":  "group",
-				"id":    req.Identifier,
-				"name":  groupName,
+				"type": "group",
+				"id":   req.Identifier,
+				"name": groupName,
 			},
 		})
 		return
