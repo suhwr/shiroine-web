@@ -19,6 +19,9 @@ const Checkout = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [verificationResult, setVerificationResult] = useState(null);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -83,11 +86,60 @@ const Checkout = () => {
     fetchPaymentChannels();
   }, [language]);
 
+  // Verify user/group
+  const handleVerify = async () => {
+    if (!whatsappNumber) {
+      toast.error(language === 'id' ? 'Masukkan nomor WhatsApp atau ID grup' : 'Enter WhatsApp number or group ID');
+      return;
+    }
+
+    try {
+      setVerifying(true);
+      const isGroup = planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group');
+      
+      const response = await axios.post(
+        `${PAYMENT_API_CONFIG.baseUrl}/api/verify-user`,
+        {
+          identifier: whatsappNumber,
+          type: isGroup ? 'group' : 'user'
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          withCredentials: true,
+        }
+      );
+
+      if (response.data.success) {
+        setVerified(true);
+        setVerificationResult(response.data);
+        toast.success(response.data.message);
+      } else {
+        setVerified(false);
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      const errorMessage = error.response?.data?.message || 
+        (language === 'id' ? 'Gagal memverifikasi' : 'Failed to verify');
+      toast.error(errorMessage);
+      setVerified(false);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   // Create transaction via backend API
   const handleProceedPayment = async () => {
     // Validate inputs
     if (!whatsappNumber) {
       toast.error(t.whatsappRequired);
+      return;
+    }
+
+    if (!verified) {
+      toast.error(language === 'id' ? 'Harap verifikasi nomor/ID terlebih dahulu' : 'Please verify your number/ID first');
       return;
     }
 
@@ -100,13 +152,15 @@ const Checkout = () => {
       setProcessing(true);
 
       const amount = getNumericPrice(planDetails.price);
+      const isGroup = planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group');
       
       // Prepare transaction data for backend
       const transactionData = {
         method: selectedPaymentMethod,
         amount: amount,
-        customerName: `Customer-${whatsappNumber}`,
-        customerPhone: whatsappNumber,
+        customerName: verificationResult?.data?.name || `Customer-${whatsappNumber}`,
+        customerPhone: isGroup ? '' : whatsappNumber,
+        groupId: isGroup ? whatsappNumber : '',
         orderItems: [
           {
             name: `${planDetails.type} - ${planDetails.duration}`,
@@ -194,12 +248,6 @@ const Checkout = () => {
                 <Globe size={18} />
                 {language === 'id' ? 'EN' : 'ID'}
               </Button>
-              <Button 
-                className="btn-primary btn-join"
-                onClick={() => window.open(communityLink, '_blank')}
-              >
-                {t.joinCommunity}
-              </Button>
             </nav>
           </div>
         </div>
@@ -251,23 +299,77 @@ const Checkout = () => {
               <Card className="p-6">
                 <h2 className="text-xl font-bold mb-6">{t.paymentMethod}</h2>
 
-                {/* WhatsApp Number Input */}
+                {/* Premium Stacking Policy Notice */}
+                <div className="mb-6 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
+                  <h3 className="font-semibold text-blue-300 mb-2">
+                    {language === 'id' ? '⚠️ Penting: Kebijakan Premium' : '⚠️ Important: Premium Policy'}
+                  </h3>
+                  <ul className="text-sm text-gray-300 space-y-1">
+                    <li>• {language === 'id' 
+                      ? 'Premium dapat ditumpuk: jika masih ada sisa durasi, waktu baru akan ditambahkan ke durasi yang tersisa' 
+                      : 'Premium can be stacked: if there is remaining time, new time will be added to the remaining duration'}</li>
+                    <li>• {language === 'id' 
+                      ? 'Special limit akan direset ke 0 dan max_special_limit akan diperbarui sesuai paket baru, meskipun paket sebelumnya memiliki limit lebih tinggi' 
+                      : 'Special limit will be reset to 0 and max_special_limit will be updated according to new plan, even if previous plan had higher limit'}</li>
+                    <li className="text-yellow-400 font-medium">• {language === 'id' 
+                      ? 'Contoh: Jika Anda memiliki paket 30 hari (15 limit) dengan sisa 3 hari, lalu membeli paket 15 hari (10 limit), durasi akan menjadi 18 hari tetapi max_special_limit menjadi 10' 
+                      : 'Example: If you have 30 days plan (15 limit) with 3 days remaining, then buy 15 days plan (10 limit), duration becomes 18 days but max_special_limit becomes 10'}</li>
+                  </ul>
+                </div>
+
+                {/* Phone/Group ID Input with Verification */}
                 <div className="mb-6">
                   <Label htmlFor="whatsapp" className="mb-2 block">
-                    {t.whatsappNumber} <span className="text-red-500">*</span>
+                    {planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group')
+                      ? (language === 'id' ? 'ID Grup' : 'Group ID')
+                      : t.whatsappNumber} <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="whatsapp"
-                    type="tel"
-                    placeholder={t.whatsappNumberPlaceholder}
-                    value={whatsappNumber}
-                    onChange={(e) => setWhatsappNumber(e.target.value)}
-                    className="w-full"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="whatsapp"
+                      type="text"
+                      placeholder={planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group')
+                        ? (language === 'id' ? 'Masukkan ID Grup' : 'Enter Group ID')
+                        : t.whatsappNumberPlaceholder}
+                      value={whatsappNumber}
+                      onChange={(e) => {
+                        setWhatsappNumber(e.target.value);
+                        setVerified(false);
+                        setVerificationResult(null);
+                      }}
+                      className="flex-1"
+                      disabled={verifying}
+                    />
+                    <Button 
+                      onClick={handleVerify}
+                      disabled={verifying || !whatsappNumber}
+                      variant="outline"
+                      style={{ minWidth: '100px' }}
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin mr-2" />
+                          {language === 'id' ? 'Verifikasi...' : 'Verifying...'}
+                        </>
+                      ) : (
+                        language === 'id' ? 'Verifikasi' : 'Verify'
+                      )}
+                    </Button>
+                  </div>
+                  {verified && verificationResult && (
+                    <div className="mt-2 p-3 bg-green-900/20 border border-green-700 rounded-md flex items-center gap-2">
+                      <Check size={18} className="text-green-400" />
+                      <span className="text-sm text-green-300">{verificationResult.message}</span>
+                    </div>
+                  )}
                   <p className="text-sm text-gray-400 mt-2">
-                    {language === 'id' 
-                      ? 'Contoh: 628123456789 (gunakan kode negara tanpa +)' 
-                      : 'Example: 628123456789 (use country code without +)'}
+                    {planDetails.type.toLowerCase().includes('group') || planDetails.id.startsWith('group')
+                      ? (language === 'id' 
+                        ? 'Masukkan ID grup WhatsApp Anda (contoh: 120363xxxxx@g.us)' 
+                        : 'Enter your WhatsApp group ID (example: 120363xxxxx@g.us)')
+                      : (language === 'id' 
+                        ? 'Contoh: 628123456789 (gunakan kode negara tanpa +)' 
+                        : 'Example: 628123456789 (use country code without +)')}
                   </p>
                 </div>
 

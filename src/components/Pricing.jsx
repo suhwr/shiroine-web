@@ -32,18 +32,24 @@ const Pricing = () => {
       duration: t.days5,
       price: 'Rp 7.000',
       popular: false,
+      specialLimit: 5,
+      days: 7,
     },
     {
       id: 'user-15d',
       duration: t.days15,
       price: 'Rp 15.000',
       popular: true,
+      specialLimit: 10,
+      days: 15,
     },
     {
       id: 'user-1m',
       duration: t.month1,
       price: 'Rp 20.000',
       popular: false,
+      specialLimit: 15,
+      days: 30,
     },
   ];
 
@@ -53,12 +59,16 @@ const Pricing = () => {
       duration: t.days15,
       price: 'Rp 30.000',
       popular: false,
+      specialLimit: 30,
+      days: 15,
     },
     {
       id: 'group-1m',
       duration: t.month1,
       price: 'Rp 50.000',
       popular: true,
+      specialLimit: 50,
+      days: 30,
     },
   ];
 
@@ -113,12 +123,6 @@ const Pricing = () => {
                 <Globe size={18} />
                 {language === 'id' ? 'EN' : 'ID'}
               </Button>
-              <Button 
-                className="btn-primary btn-join"
-                onClick={() => window.open(communityLink, '_blank')}
-              >
-                {t.joinCommunity}
-              </Button>
             </nav>
           </div>
         </div>
@@ -156,6 +160,14 @@ const Pricing = () => {
                 <div className="pricing-card-header">
                   <h3 className="pricing-plan-duration">{plan.duration}</h3>
                   <div className="pricing-plan-price">{plan.price}</div>
+                  <p className="pricing-special-limit" style={{ 
+                    marginTop: '12px', 
+                    fontSize: '14px', 
+                    color: 'var(--accent-primary)',
+                    fontWeight: '500'
+                  }}>
+                    {language === 'id' ? 'Limit Spesial' : 'Special Limit'}: {plan.specialLimit}
+                  </p>
                 </div>
                 <div className="pricing-benefits">
                   <p className="benefits-title">{t.benefits}:</p>
@@ -201,6 +213,14 @@ const Pricing = () => {
                 <div className="pricing-card-header">
                   <h3 className="pricing-plan-duration">{plan.duration}</h3>
                   <div className="pricing-plan-price">{plan.price}</div>
+                  <p className="pricing-special-limit" style={{ 
+                    marginTop: '12px', 
+                    fontSize: '14px', 
+                    color: 'var(--accent-primary)',
+                    fontWeight: '500'
+                  }}>
+                    {language === 'id' ? 'Limit Spesial Grup' : 'Group Special Limit'}: {plan.specialLimit}
+                  </p>
                 </div>
                 <div className="pricing-benefits">
                   <p className="benefits-title">{t.benefits}:</p>

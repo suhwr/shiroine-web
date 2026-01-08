@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 	"golang.org/x/time/rate"
 )
@@ -33,6 +35,7 @@ type TripayConfig struct {
 
 // Global configuration
 var config TripayConfig
+var db *sql.DB
 
 // Transaction record structure
 type TransactionRecord struct {
@@ -52,6 +55,7 @@ type CreateTransactionRequest struct {
 	Amount        int         `json:"amount"`
 	CustomerName  string      `json:"customerName"`
 	CustomerPhone string      `json:"customerPhone"`
+	GroupID       string      `json:"groupId"`
 	OrderItems    interface{} `json:"orderItems"`
 	ReturnURL     string      `json:"returnUrl"`
 }
@@ -266,10 +270,19 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if req.Method == "" || req.Amount == 0 || req.CustomerPhone == "" || req.OrderItems == nil {
+	if req.Method == "" || req.Amount == 0 || req.OrderItems == nil {
 		respondJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: "Missing required fields",
+		})
+		return
+	}
+
+	// Require either phone or group ID
+	if req.CustomerPhone == "" && req.GroupID == "" {
+		respondJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Either phone number or group ID is required",
 		})
 		return
 	}
@@ -378,7 +391,39 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 
 	if success, ok := result["success"].(bool); ok && success {
 		if paymentData, ok := result["data"].(map[string]interface{}); ok {
-			// Get existing history from cookie
+			// Save to payment_history table instead of cookie
+			if db != nil {
+				orderItemsJSON, _ := json.Marshal(req.OrderItems)
+				var phoneNumber, groupID sql.NullString
+				if req.CustomerPhone != "" {
+					phoneNumber = sql.NullString{String: req.CustomerPhone, Valid: true}
+				}
+				if req.GroupID != "" {
+					groupID = sql.NullString{String: req.GroupID, Valid: true}
+				}
+				
+				_, err := db.Exec(`
+					INSERT INTO payment_history 
+					(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				`, 
+					paymentData["reference"], 
+					merchantRef, 
+					phoneNumber,
+					groupID,
+					customerName, 
+					req.Method, 
+					req.Amount, 
+					"UNPAID",
+					orderItemsJSON,
+					time.Now(),
+				)
+				if err != nil {
+					log.Printf("Failed to save transaction to database: %v", err)
+				}
+			}
+
+			// Also save to cookie for backward compatibility (temporary)
 			var existingHistory []TransactionRecord
 			historyJSON := getCookie(r, "paymentHistory")
 			if historyJSON != "" {
@@ -405,6 +450,10 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Set cookie
+			domain := os.Getenv("DOMAIN")
+			if domain == "" {
+				domain = "shiroine.my.id"
+			}
 			historyBytes, _ := json.Marshal(existingHistory)
 			setCookie(w, "paymentHistory", string(historyBytes), domain)
 
@@ -568,26 +617,281 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	if status == "PAID" {
 		log.Printf("Payment successful for reference: %v", reference)
-		// TODO: Activate premium service for user
+		
+		// Update payment_history table
+		if db != nil {
+			_, err := db.Exec(`
+				UPDATE payment_history 
+				SET status = $1, paid_at = $2, updated_at = $3
+				WHERE reference = $4
+			`, status, time.Now(), time.Now(), reference)
+			if err != nil {
+				log.Printf("Failed to update payment history: %v", err)
+			}
+
+			// Get transaction details to activate premium
+			var phoneNumber, groupID sql.NullString
+			var orderItemsJSON []byte
+			err = db.QueryRow(`
+				SELECT phone_number, group_id, order_items 
+				FROM payment_history 
+				WHERE reference = $1
+			`, reference).Scan(&phoneNumber, &groupID, &orderItemsJSON)
+			
+			if err == nil {
+				// Parse order items to get plan details
+				var orderItems []map[string]interface{}
+				json.Unmarshal(orderItemsJSON, &orderItems)
+				
+				if len(orderItems) > 0 {
+					planName := ""
+					if name, ok := orderItems[0]["name"].(string); ok {
+						planName = name
+					}
+					
+					// Extract plan ID from name with improved pattern matching
+					planID := ""
+					nameLower := strings.ToLower(planName)
+					
+					if strings.Contains(nameLower, "user premium") {
+						// Match specific day counts to avoid ambiguity
+						if strings.Contains(nameLower, "5 day") || strings.Contains(nameLower, "7 day") {
+							planID = "user-5d"
+						} else if strings.Contains(nameLower, "15 day") {
+							planID = "user-15d"
+						} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "1 month") {
+							planID = "user-1m"
+						}
+					} else if strings.Contains(nameLower, "group premium") {
+						if strings.Contains(nameLower, "15 day") {
+							planID = "group-15d"
+						} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "1 month") {
+							planID = "group-1m"
+						}
+					}
+					
+					if planID != "" {
+						days, specialLimit, isGroup := parsePlanDetails(planID)
+						
+						var jid, lid string
+						if isGroup && groupID.Valid {
+							jid = groupID.String
+							lid = groupID.String // For groups, lid = id
+						} else if phoneNumber.Valid {
+							jid = phoneNumber.String
+							// Get lid from users table
+							err = db.QueryRow("SELECT lid FROM users WHERE phone_number = $1", phoneNumber.String).Scan(&lid)
+							if err != nil {
+								log.Printf("Failed to get lid for phone %s: %v", phoneNumber.String, err)
+								lid = phoneNumber.String // Fallback to phone number
+							}
+						}
+						
+						if jid != "" && lid != "" {
+							// Check if premium already exists
+							var existingExpired sql.NullString
+							err := db.QueryRow(`
+								SELECT expired FROM premium WHERE jid = $1 AND lid = $2
+							`, jid, lid).Scan(&existingExpired)
+							
+							var newExpired time.Time
+							if err == sql.ErrNoRows {
+								// New premium
+								newExpired = time.Now().AddDate(0, 0, days)
+							} else if err == nil && existingExpired.Valid {
+								// Stack premium
+								currentExpired, _ := time.Parse(time.RFC3339, existingExpired.String)
+								if currentExpired.Before(time.Now()) {
+									newExpired = time.Now().AddDate(0, 0, days)
+								} else {
+									newExpired = currentExpired.AddDate(0, 0, days)
+								}
+							} else {
+								newExpired = time.Now().AddDate(0, 0, days)
+							}
+							
+							// Upsert premium
+							_, err = db.Exec(`
+								INSERT INTO premium (jid, lid, special_limit, max_special_limit, expired, last_special_reset)
+								VALUES ($1, $2, $3, $4, $5, $6)
+								ON CONFLICT (jid, lid) DO UPDATE SET
+									special_limit = 0,
+									max_special_limit = $4,
+									expired = $5,
+									last_special_reset = $6,
+									updated_at = CURRENT_TIMESTAMP
+							`, jid, lid, 0, specialLimit, newExpired.Format(time.RFC3339), time.Now().Format(time.RFC3339))
+							
+							if err != nil {
+								log.Printf("Failed to activate premium: %v", err)
+							} else {
+								log.Printf("Premium activated for jid=%s, lid=%s, days=%d, specialLimit=%d", jid, lid, days, specialLimit)
+							}
+						}
+					}
+				}
+			}
+		}
 	} else if status == "EXPIRED" || status == "FAILED" {
 		log.Printf("Payment %v for reference: %v", status, reference)
+		
+		// Update payment_history table
+		if db != nil {
+			_, err := db.Exec(`
+				UPDATE payment_history 
+				SET status = $1, updated_at = $2
+				WHERE reference = $3
+			`, status, time.Now(), reference)
+			if err != nil {
+				log.Printf("Failed to update payment history: %v", err)
+			}
+		}
 	}
 
 	// Always respond with success to Tripay
 	respondJSON(w, http.StatusOK, APIResponse{Success: true})
 }
 
-// Payment history handler
+// Payment history handler - now queries database by phone/group ID
 func paymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
-	var history []TransactionRecord
-	historyJSON := getCookie(r, "paymentHistory")
-	if historyJSON != "" {
-		json.Unmarshal([]byte(historyJSON), &history)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
+
+	var req struct {
+		Identifier string `json:"identifier"` // phone number or group ID
+		Type       string `json:"type"`       // "user" or "group"
+		Page       int    `json:"page"`       // page number (default 1)
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	if req.Identifier == "" {
+		respondJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Missing identifier",
+		})
+		return
+	}
+
+	if req.Page < 1 {
+		req.Page = 1
+	}
+
+	perPage := 10
+	offset := (req.Page - 1) * perPage
+
+	if db == nil {
+		// Fallback to cookie-based history if database is not available
+		var history []TransactionRecord
+		historyJSON := getCookie(r, "paymentHistory")
+		if historyJSON != "" {
+			json.Unmarshal([]byte(historyJSON), &history)
+		}
+
+		respondJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data:    history,
+		})
+		return
+	}
+
+	// Query database
+	var rows *sql.Rows
+	var err error
+	var totalCount int
+
+	if req.Type == "group" {
+		rows, err = db.Query(`
+			SELECT reference, merchant_ref, customer_name, method, amount, status, 
+			       order_items, created_at, updated_at, paid_at
+			FROM payment_history
+			WHERE group_id = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3
+		`, req.Identifier, perPage, offset)
+		
+		db.QueryRow("SELECT COUNT(*) FROM payment_history WHERE group_id = $1", req.Identifier).Scan(&totalCount)
+	} else {
+		rows, err = db.Query(`
+			SELECT reference, merchant_ref, customer_name, method, amount, status, 
+			       order_items, created_at, updated_at, paid_at
+			FROM payment_history
+			WHERE phone_number = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3
+		`, req.Identifier, perPage, offset)
+		
+		db.QueryRow("SELECT COUNT(*) FROM payment_history WHERE phone_number = $1", req.Identifier).Scan(&totalCount)
+	}
+
+	if err != nil {
+		log.Printf("Database error: %v", err)
+		respondJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Database error",
+		})
+		return
+	}
+	defer rows.Close()
+
+	var history []map[string]interface{}
+	for rows.Next() {
+		var reference, merchantRef, customerName, method, status string
+		var amount int
+		var orderItemsJSON []byte
+		var createdAt, updatedAt time.Time
+		var paidAt sql.NullTime
+
+		err := rows.Scan(&reference, &merchantRef, &customerName, &method, &amount, 
+			&status, &orderItemsJSON, &createdAt, &updatedAt, &paidAt)
+		if err != nil {
+			log.Printf("Row scan error: %v", err)
+			continue
+		}
+
+		var orderItems interface{}
+		json.Unmarshal(orderItemsJSON, &orderItems)
+
+		record := map[string]interface{}{
+			"reference":    reference,
+			"merchantRef":  merchantRef,
+			"customerName": customerName,
+			"method":       method,
+			"amount":       amount,
+			"status":       status,
+			"orderItems":   orderItems,
+			"createdAt":    createdAt.Format(time.RFC3339),
+			"updatedAt":    updatedAt.Format(time.RFC3339),
+		}
+
+		if paidAt.Valid {
+			record["paidAt"] = paidAt.Time.Format(time.RFC3339)
+		}
+
+		history = append(history, record)
+	}
+
+	totalPages := (totalCount + perPage - 1) / perPage
 
 	respondJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data:    history,
+		Data: map[string]interface{}{
+			"history":     history,
+			"page":        req.Page,
+			"perPage":     perPage,
+			"totalCount":  totalCount,
+			"totalPages":  totalPages,
+			"hasNext":     req.Page < totalPages,
+			"hasPrevious": req.Page > 1,
+		},
 	})
 }
 
@@ -646,11 +950,180 @@ func randomString(length int) string {
 	return string(b)
 }
 
+// Initialize database connection
+func initDB() error {
+	var err error
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	dbSSLMode := os.Getenv("DB_SSLMODE")
+
+	if dbSSLMode == "" {
+		dbSSLMode = "disable"
+	}
+
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		dbHost, dbPort, dbUser, dbPassword, dbName, dbSSLMode)
+
+	db, err = sql.Open("postgres", connStr)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %v", err)
+	}
+
+	// Set connection pool settings
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Test connection
+	if err = db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %v", err)
+	}
+
+	log.Println("✅ Database connection established successfully")
+	return nil
+}
+
+// Parse plan details from plan ID
+func parsePlanDetails(planID string) (days int, specialLimit int, isGroup bool) {
+	isGroup = strings.HasPrefix(planID, "group-")
+	
+	switch planID {
+	// User plans - updated based on requirements
+	case "user-5d":
+		return 7, 5, false  // 7 days, 5 special limit
+	case "user-15d":
+		return 15, 10, false // 15 days, 10 special limit
+	case "user-1m":
+		return 30, 15, false // 30 days, 15 special limit
+	// Group plans
+	case "group-15d":
+		return 15, 30, true // 15 days, 30 special limit
+	case "group-1m":
+		return 30, 50, true // 30 days, 50 special limit
+	default:
+		return 0, 0, false
+	}
+}
+
+// Verify user handler
+func verifyUserHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Identifier string `json:"identifier"` // phone number or group ID
+		Type       string `json:"type"`       // "user" or "group"
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	if req.Identifier == "" || req.Type == "" {
+		respondJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Missing identifier or type",
+		})
+		return
+	}
+
+	if req.Type == "group" {
+		// Query groups table
+		var groupName string
+		err := db.QueryRow("SELECT group_name FROM groups WHERE id = $1", req.Identifier).Scan(&groupName)
+		if err == sql.ErrNoRows {
+			respondJSON(w, http.StatusNotFound, APIResponse{
+				Success: false,
+				Message: "Tidak menemukan grup di database, pastikan kamu sudah menggunakan bot dari kami",
+			})
+			return
+		} else if err != nil {
+			log.Printf("Database error: %v", err)
+			respondJSON(w, http.StatusInternalServerError, APIResponse{
+				Success: false,
+				Message: "Database error",
+			})
+			return
+		}
+
+		respondJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: fmt.Sprintf("Apakah grup kamu bernama \"%s\"?", groupName),
+			Data: map[string]interface{}{
+				"type":  "group",
+				"id":    req.Identifier,
+				"name":  groupName,
+			},
+		})
+		return
+	}
+
+	// For user verification
+	var lid sql.NullString
+	err := db.QueryRow("SELECT lid FROM users WHERE phone_number = $1", req.Identifier).Scan(&lid)
+	if err == sql.ErrNoRows || !lid.Valid || lid.String == "" {
+		respondJSON(w, http.StatusNotFound, APIResponse{
+			Success: false,
+			Message: "Tidak menemukan user di database, pastikan kamu sudah menggunakan bot dari kami",
+		})
+		return
+	} else if err != nil {
+		log.Printf("Database error: %v", err)
+		respondJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Database error",
+		})
+		return
+	}
+
+	// Query names table for push_name
+	var pushName string
+	err = db.QueryRow("SELECT push_name FROM names WHERE lid = $1", lid.String).Scan(&pushName)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Database error querying names: %v", err)
+	}
+
+	if pushName == "" {
+		pushName = "User"
+	}
+
+	respondJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: fmt.Sprintf("Apakah kamu bernama \"%s\"?", pushName),
+		Data: map[string]interface{}{
+			"type":        "user",
+			"phoneNumber": req.Identifier,
+			"lid":         lid.String,
+			"name":        pushName,
+		},
+	})
+}
+
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
+
+	// Initialize database
+	if err := initDB(); err != nil {
+		log.Printf("⚠️  WARNING: Database connection failed: %v", err)
+		log.Println("Server will continue without database features")
+	}
+	defer func() {
+		if db != nil {
+			db.Close()
+		}
+	}()
 
 	// Configure Tripay
 	config.APIKey = os.Getenv("TRIPAY_API_KEY")
@@ -679,6 +1152,7 @@ func main() {
 	// Register routes
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/api/payment-channels", getPaymentChannelsHandler)
+	mux.HandleFunc("/api/verify-user", verifyUserHandler)
 	mux.HandleFunc("/api/create-transaction", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			createTransactionHandler(w, r)
