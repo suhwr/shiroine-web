@@ -55,6 +55,7 @@ type CreateTransactionRequest struct {
 	Amount        int         `json:"amount"`
 	CustomerName  string      `json:"customerName"`
 	CustomerPhone string      `json:"customerPhone"`
+	GroupID       string      `json:"groupId"`
 	OrderItems    interface{} `json:"orderItems"`
 	ReturnURL     string      `json:"returnUrl"`
 }
@@ -269,10 +270,19 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if req.Method == "" || req.Amount == 0 || req.CustomerPhone == "" || req.OrderItems == nil {
+	if req.Method == "" || req.Amount == 0 || req.OrderItems == nil {
 		respondJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: "Missing required fields",
+		})
+		return
+	}
+
+	// Require either phone or group ID
+	if req.CustomerPhone == "" && req.GroupID == "" {
+		respondJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Either phone number or group ID is required",
 		})
 		return
 	}
@@ -384,14 +394,23 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 			// Save to payment_history table instead of cookie
 			if db != nil {
 				orderItemsJSON, _ := json.Marshal(req.OrderItems)
+				var phoneNumber, groupID sql.NullString
+				if req.CustomerPhone != "" {
+					phoneNumber = sql.NullString{String: req.CustomerPhone, Valid: true}
+				}
+				if req.GroupID != "" {
+					groupID = sql.NullString{String: req.GroupID, Valid: true}
+				}
+				
 				_, err := db.Exec(`
 					INSERT INTO payment_history 
-					(reference, merchant_ref, phone_number, customer_name, method, amount, status, order_items, created_at)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+					(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 				`, 
 					paymentData["reference"], 
 					merchantRef, 
-					req.CustomerPhone, 
+					phoneNumber,
+					groupID,
 					customerName, 
 					req.Method, 
 					req.Amount, 
