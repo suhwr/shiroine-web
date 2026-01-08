@@ -649,20 +649,23 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 						planName = name
 					}
 					
-					// Extract plan ID from name (e.g., "User Premium - 15 Days" -> "user-15d")
+					// Extract plan ID from name with improved pattern matching
 					planID := ""
-					if strings.Contains(planName, "User Premium") {
-						if strings.Contains(planName, "5") || strings.Contains(planName, "7") {
+					nameLower := strings.ToLower(planName)
+					
+					if strings.Contains(nameLower, "user premium") {
+						// Match specific day counts to avoid ambiguity
+						if strings.Contains(nameLower, "5 day") || strings.Contains(nameLower, "7 day") {
 							planID = "user-5d"
-						} else if strings.Contains(planName, "15") {
+						} else if strings.Contains(nameLower, "15 day") {
 							planID = "user-15d"
-						} else if strings.Contains(planName, "30") || strings.Contains(planName, "1") {
+						} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "1 month") {
 							planID = "user-1m"
 						}
-					} else if strings.Contains(planName, "Group Premium") {
-						if strings.Contains(planName, "15") {
+					} else if strings.Contains(nameLower, "group premium") {
+						if strings.Contains(nameLower, "15 day") {
 							planID = "group-15d"
-						} else if strings.Contains(planName, "30") || strings.Contains(planName, "1") {
+						} else if strings.Contains(nameLower, "30 day") || strings.Contains(nameLower, "1 month") {
 							planID = "group-1m"
 						}
 					}
@@ -677,7 +680,11 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 						} else if phoneNumber.Valid {
 							jid = phoneNumber.String
 							// Get lid from users table
-							db.QueryRow("SELECT lid FROM users WHERE phone_number = $1", phoneNumber.String).Scan(&lid)
+							err = db.QueryRow("SELECT lid FROM users WHERE phone_number = $1", phoneNumber.String).Scan(&lid)
+							if err != nil {
+								log.Printf("Failed to get lid for phone %s: %v", phoneNumber.String, err)
+								lid = phoneNumber.String // Fallback to phone number
+							}
 						}
 						
 						if jid != "" && lid != "" {
