@@ -195,6 +195,14 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		// Transform response to match expected format
 		// Add payment_url (checkout_url) for frontend redirect
 		if paymentURL, ok := data["payment_url"].(string); ok {
+			// Append return URL with merchant_order_id parameter
+			if merchantOrderID != "" && req.ReturnURL != "" {
+				separator := "?"
+				if strings.Contains(req.ReturnURL, "?") {
+					separator = "&"
+				}
+				paymentURL = paymentURL + separator + "return_url=" + req.ReturnURL + separator + "merchant_order_id=" + merchantOrderID
+			}
 			data["checkout_url"] = paymentURL
 		}
 

@@ -171,7 +171,7 @@ const Checkout = () => {
             quantity: 1,
           }
         ],
-        returnUrl: `${window.location.origin}/pricing`,
+        returnUrl: `${window.location.origin}/payment-verification`,
       };
 
       // Create transaction via backend
