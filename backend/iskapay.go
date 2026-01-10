@@ -96,16 +96,16 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 	}
 
 	// Prepare callback URL
-	callbackURL := os.Getenv("FRONTEND_URL")
+	callbackURL := "https://" + os.Getenv("DOMAIN")
 	if callbackURL == "" {
-		callbackURL = "https://shiroine.web.id"
+		callbackURL = "https://pay.shiroine.web.id"
 	}
-	callbackURL += "/api/callbacks/iskapay"
+	callbackURL += "/callback"
 
 	// Prepare transaction data for Iskapay
 	// Based on the problem statement API structure
 	transactionData := map[string]interface{}{
-		"amount":         req.Amount,
+		"amount":         2000, //req.Amount,
 		"customer_name":  customerName,
 		"customer_email": fmt.Sprintf("%s@shiroine.web.id", customerPhone), // Generate email from phone
 		"customer_phone": customerPhone,
