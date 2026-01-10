@@ -341,8 +341,10 @@ func (g *TripayGateway) HandleCallback(payload []byte, headers map[string]string
 			}
 
 			// Activate premium
-			if err := activatePremium(g.db, reference); err != nil {
-				log.Printf("Failed to activate premium: %v", err)
+			if refStr, ok := reference.(string); ok {
+				if err := activatePremium(g.db, refStr); err != nil {
+					log.Printf("Failed to activate premium: %v", err)
+				}
 			}
 		}
 	} else if status == "EXPIRED" || status == "FAILED" {
