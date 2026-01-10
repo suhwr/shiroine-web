@@ -371,7 +371,9 @@ const PaymentPage = () => {
                        (language === 'id' ? '❌ Pembayaran Gagal' : '❌ Payment Failed')}
                     </h1>
 
-                    {isPending && paymentData.qr_code && (
+                    {/* QRIS Payment - Show QR Code */}
+                    {isPending && (paymentData.qr_code || paymentData.payment_number || paymentData.qr_string) && 
+                     (paymentData.payment_method === 'qris' || !paymentData.payment_method || paymentData.payment_method.toLowerCase().includes('qris')) && (
                       <>
                         <p className="text-gray-300 mb-6">
                           {language === 'id' 
@@ -382,7 +384,7 @@ const PaymentPage = () => {
                         {/* QR Code Display */}
                         <div className="flex justify-center mb-6">
                           <div className="bg-white p-4 rounded-lg">
-                            {!qrImageError ? (
+                            {!qrImageError && paymentData.qr_code ? (
                               <img 
                                 src={paymentData.qr_code} 
                                 alt="QR Code" 
@@ -390,10 +392,10 @@ const PaymentPage = () => {
                                 onError={() => setQrImageError(true)}
                               />
                             ) : (
-                              // Fallback to QRCodeSVG if image fails to load
-                              paymentData.qr_string && (
+                              // Use QRCodeSVG for QR strings (payment_number or qr_string)
+                              (paymentData.payment_number || paymentData.qr_string) && (
                                 <QRCodeSVG 
-                                  value={paymentData.qr_string} 
+                                  value={paymentData.payment_number || paymentData.qr_string} 
                                   size={256}
                                   level="H"
                                   includeMargin={true}
@@ -425,7 +427,84 @@ const PaymentPage = () => {
                       </>
                     )}
 
-                    {isPending && !paymentData.qr_code && paymentData.checkout_url && (
+                    {/* Virtual Account Payment - Show Account Number */}
+                    {isPending && paymentData.payment_number && paymentData.payment_method && 
+                     (paymentData.payment_method.toLowerCase().includes('va') || 
+                      paymentData.payment_method.toLowerCase().includes('virtual')) && (
+                      <>
+                        <p className="text-gray-300 mb-6">
+                          {language === 'id' 
+                            ? 'Transfer ke nomor Virtual Account di bawah ini' 
+                            : 'Transfer to the Virtual Account number below'}
+                        </p>
+                        
+                        {/* Virtual Account Number Display */}
+                        <div className="mb-6">
+                          <div className="bg-gray-800 border-2 border-yellow-500 rounded-lg p-6">
+                            <p className="text-sm text-gray-400 mb-2">
+                              {language === 'id' ? 'Nomor Virtual Account' : 'Virtual Account Number'}
+                            </p>
+                            <div className="flex items-center justify-center gap-4">
+                              <p className="text-3xl font-mono font-bold text-yellow-400 tracking-wider">
+                                {paymentData.payment_number}
+                              </p>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(paymentData.payment_number);
+                                  toast.success(language === 'id' ? 'Nomor disalin!' : 'Number copied!');
+                                }}
+                                className="btn-secondary"
+                              >
+                                {language === 'id' ? 'Salin' : 'Copy'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-blue-950 border-2 border-blue-500 rounded-lg p-4 mb-6">
+                          <h3 className="font-semibold text-blue-300 mb-2">
+                            {language === 'id' ? 'Cara Pembayaran:' : 'How to Pay:'}
+                          </h3>
+                          <ol className="text-sm text-white space-y-1 list-decimal list-inside">
+                            <li>{language === 'id' 
+                              ? 'Buka aplikasi mobile banking atau ATM' 
+                              : 'Open your mobile banking app or ATM'}</li>
+                            <li>{language === 'id' 
+                              ? 'Pilih menu Transfer' 
+                              : 'Select Transfer menu'}</li>
+                            <li>{language === 'id' 
+                              ? 'Masukkan nomor Virtual Account di atas' 
+                              : 'Enter the Virtual Account number above'}</li>
+                            <li>{language === 'id' 
+                              ? 'Konfirmasi dan selesaikan pembayaran' 
+                              : 'Confirm and complete the payment'}</li>
+                          </ol>
+                        </div>
+
+                        {timeRemaining && (
+                          <div className="mb-4">
+                            <p className="text-sm text-gray-400 mb-1">
+                              {language === 'id' ? 'Waktu Tersisa' : 'Time Remaining'}
+                            </p>
+                            <p className="text-2xl font-bold text-yellow-400">
+                              {timeRemaining}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+                          <RefreshCw size={16} className="animate-spin" />
+                          <span>
+                            {language === 'id' 
+                              ? 'Status diperbarui otomatis setiap 10 detik' 
+                              : 'Status updates automatically every 10 seconds'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {isPending && !paymentData.qr_code && !paymentData.payment_number && !paymentData.qr_string && paymentData.checkout_url && (
                       <>
                         <p className="text-gray-300 mb-6">
                           {language === 'id' 
