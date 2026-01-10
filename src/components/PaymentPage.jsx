@@ -306,7 +306,7 @@ const PaymentPage = () => {
   }
 
   const isPaid = paymentData.status === 'paid' || paymentData.status === 'PAID' || paymentData.status === 'completed';
-  const isPending = paymentData.status === 'pending' || paymentData.status === 'UNPAID';
+  const isPending = paymentData.status === 'pending' || paymentData.status === 'UNPAID' || paymentData.status === 'unpaid';
   const isFailed = ['failed', 'FAILED', 'expired', 'EXPIRED', 'cancelled', 'CANCELLED'].includes(paymentData.status);
 
   return (

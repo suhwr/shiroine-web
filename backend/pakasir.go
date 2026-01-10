@@ -576,6 +576,12 @@ func (g *PakasirGateway) GetTransactionStatus(orderId string) (interface{}, erro
 		}
 	}
 
+	// Add payment_number from database to response for QRIS
+	// This is the QR string that frontend needs to generate QR code
+	if paymentNumber.Valid && paymentNumber.String != "" {
+		transactionData["payment_number"] = paymentNumber.String
+	}
+
 	return transactionData, nil
 }
 
