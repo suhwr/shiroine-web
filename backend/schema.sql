@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS payment_history (
     plan_type TEXT,
     plan_duration TEXT,
     order_items JSONB,
+    payment_number TEXT,
+    expired_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     paid_at TIMESTAMP
