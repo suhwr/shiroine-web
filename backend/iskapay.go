@@ -23,7 +23,7 @@ type IskapayGateway struct {
 func NewIskapayGateway() *IskapayGateway {
 	gateway := &IskapayGateway{
 		APIKey: os.Getenv("ISKAPAY_API_KEY"),
-		APIURL: "https://wallet.iskapay.com/api",
+		APIURL: "https://wallet.iskapay.com/api/gateway",
 	}
 
 	return gateway
@@ -125,7 +125,7 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+g.APIKey)
+	httpReq.Header.Set("X-API-Key", g.APIKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(httpReq)
@@ -235,7 +235,7 @@ func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, erro
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+g.APIKey)
+	httpReq.Header.Set("X-API-Key", g.APIKey)
 
 	resp, err := client.Do(httpReq)
 	if err != nil {
