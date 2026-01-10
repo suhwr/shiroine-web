@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MessageCircle, Globe, Clock, CheckCircle, XCircle, Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -35,7 +35,7 @@ const PaymentPage = () => {
   };
 
   // Fetch payment status
-  const fetchPaymentStatus = async (showLoadingState = true) => {
+  const fetchPaymentStatus = useCallback(async (showLoadingState = true) => {
     if (!invoiceId) {
       setError(language === 'id' ? 'ID invoice tidak ditemukan' : 'Invoice ID not found');
       setLoading(false);
@@ -85,7 +85,7 @@ const PaymentPage = () => {
         setLoading(false);
       }
     }
-  };
+  }, [invoiceId, language]);
 
   // Initial fetch and setup polling for Iskapay
   useEffect(() => {
@@ -102,7 +102,7 @@ const PaymentPage = () => {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [invoiceId]);
+  }, [fetchPaymentStatus]);
 
   // Calculate time remaining
   useEffect(() => {
