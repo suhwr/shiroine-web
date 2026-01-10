@@ -285,25 +285,29 @@ func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, erro
 				WHERE reference = $1 OR merchant_ref = $1
 			`, orderId).Scan(&currentStatus)
 
-			// Only update and trigger premium activation if status has changed
-			if err == nil && currentStatus != dbStatus {
-				// Update payment history
-				updateQuery := `
-					UPDATE payment_history 
-					SET status = $1, updated_at = $2
-					WHERE reference = $3 OR merchant_ref = $3
-				`
-				
-				// If status is PAID, also set paid_at
+			// Handle missing record or status change
+			if err == sql.ErrNoRows {
+				// Payment record doesn't exist in DB yet - this shouldn't happen
+				// but we'll log it and skip the update
+				log.Printf("Warning: Payment record not found in database for merchant_order_id=%s", orderId)
+			} else if err != nil {
+				// Database error - log it
+				log.Printf("Failed to check current payment status: %v", err)
+			} else if currentStatus != dbStatus {
+				// Status has changed - update and trigger activation if needed
+				now := time.Now()
+				var paidAt interface{}
 				if dbStatus == "PAID" {
-					updateQuery = `
-						UPDATE payment_history 
-						SET status = $1, paid_at = $2, updated_at = $2
-						WHERE reference = $3 OR merchant_ref = $3
-					`
+					paidAt = now
+				} else {
+					paidAt = nil
 				}
-				
-				_, err := g.db.Exec(updateQuery, dbStatus, time.Now(), orderId)
+
+				_, err := g.db.Exec(`
+					UPDATE payment_history 
+					SET status = $1, paid_at = $2, updated_at = $3
+					WHERE reference = $4 OR merchant_ref = $4
+				`, dbStatus, paidAt, now, orderId)
 				if err != nil {
 					log.Printf("Failed to update transaction status: %v", err)
 				} else {
