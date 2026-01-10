@@ -191,19 +191,17 @@ const Checkout = () => {
         
         toast.success(language === 'id' ? 'Transaksi berhasil dibuat!' : 'Transaction created successfully!');
         
-        // Redirect to payment page
-        if (paymentData && paymentData.checkout_url) {
+        // Redirect to internal payment page for all payment methods
+        // Extract invoice ID from merchant_order_id or reference
+        const invoiceId = paymentData.merchant_order_id || paymentData.reference;
+        
+        if (invoiceId) {
           // Give user a moment to see the success message
           setTimeout(() => {
-            window.location.href = paymentData.checkout_url;
-          }, 1000);
-        } else if (paymentData && paymentData.payment_url) {
-          // For Iskapay or other gateways that use payment_url
-          setTimeout(() => {
-            window.location.href = paymentData.payment_url;
+            navigate(`/pay/${invoiceId}`);
           }, 1000);
         } else {
-          // For direct payment methods, navigate back to pricing
+          // Fallback: if no invoice ID, navigate back to pricing
           setTimeout(() => navigate('/pricing'), 2000);
         }
       } else {

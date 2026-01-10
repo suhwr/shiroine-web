@@ -391,10 +391,14 @@ const History = () => {
                       </div>
 
                       {/* Action Buttons */}
-                      {transaction.status === 'UNPAID' && transaction.reference && (
+                      {transaction.status === 'UNPAID' && (transaction.reference || transaction.merchantRef) && (
                         <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                           <Button 
-                            onClick={() => window.open(`https://tripay.co.id/checkout/${transaction.reference}`, '_blank')}
+                            onClick={() => {
+                              // Use merchantRef or reference as the invoice ID
+                              const invoiceId = transaction.merchantRef || transaction.reference;
+                              navigate(`/pay/${invoiceId}`);
+                            }}
                             className="btn-primary"
                             style={{ width: '100%' }}
                           >
