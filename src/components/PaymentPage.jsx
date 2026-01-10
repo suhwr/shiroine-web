@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageCircle, Globe, Clock, CheckCircle, XCircle, Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
+import { MessageCircle, Globe, Clock, CheckCircle, XCircle, Loader2, ArrowLeft, RefreshCw, Copy } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { translations } from '../translations';
 import { PAYMENT_API_CONFIG, CONTACT_INFO } from '../config';
@@ -474,7 +474,7 @@ const PaymentPage = () => {
                     )}
 
                     {/* Virtual Account Payment - Show Account Number */}
-                    {isPending && paymentData.payment_number && paymentData.payment_method && 
+                    {isPending && paymentData.payment_method && 
                      (paymentData.payment_method.toLowerCase().includes('va') || 
                       paymentData.payment_method.toLowerCase().includes('virtual')) && (
                       <>
@@ -485,28 +485,29 @@ const PaymentPage = () => {
                         </p>
                         
                         {/* Virtual Account Number Display */}
-                        <div className="mb-6">
-                          <div className="bg-gray-800 border-2 border-yellow-500 rounded-lg p-6">
-                            <p className="text-sm text-gray-400 mb-2">
-                              {language === 'id' ? 'Nomor Virtual Account' : 'Virtual Account Number'}
-                            </p>
-                            <div className="flex items-center justify-center gap-4">
-                              <p className="text-3xl font-mono font-bold text-yellow-400 tracking-wider">
+                        {paymentData.payment_number && (
+                          <div className="mb-6">
+                            <div className="bg-gray-800 border-2 border-yellow-500 rounded-lg p-6">
+                              <p className="text-sm text-gray-400 mb-2">
+                                {language === 'id' ? 'Nomor Virtual Account' : 'Virtual Account Number'}
+                              </p>
+                              <p className="text-3xl font-mono font-bold text-yellow-400 tracking-wider text-center mb-4">
                                 {paymentData.payment_number}
                               </p>
                               <Button
-                                size="sm"
                                 onClick={() => {
                                   navigator.clipboard.writeText(paymentData.payment_number);
                                   toast.success(language === 'id' ? 'Nomor disalin!' : 'Number copied!');
                                 }}
-                                className="btn-secondary"
+                                className="w-full btn-primary text-lg py-6"
+                                size="lg"
                               >
-                                {language === 'id' ? 'Salin' : 'Copy'}
+                                <Copy className="w-6 h-6 mr-2" />
+                                {language === 'id' ? 'Salin Nomor Rekening' : 'Copy Account Number'}
                               </Button>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="bg-blue-950 border-2 border-blue-500 rounded-lg p-4 mb-6">
                           <h3 className="font-semibold text-blue-300 mb-2">
