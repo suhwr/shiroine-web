@@ -76,12 +76,41 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		customerName = fmt.Sprintf("Customer-%s", req.CustomerPhone)
 	}
 
+	// Set customer phone (use group ID if it's a group purchase)
+	customerPhone := req.CustomerPhone
+	if customerPhone == "" && req.GroupID != "" {
+		customerPhone = req.GroupID
+	}
+
+	// Generate description from order items
+	description := "Premium subscription"
+	if req.OrderItems != nil {
+		// Try to extract item name from order items
+		if itemsArray, ok := req.OrderItems.([]interface{}); ok && len(itemsArray) > 0 {
+			if firstItem, ok := itemsArray[0].(map[string]interface{}); ok {
+				if itemName, ok := firstItem["name"].(string); ok && itemName != "" {
+					description = itemName
+				}
+			}
+		}
+	}
+
+	// Prepare callback URL
+	callbackURL := os.Getenv("FRONTEND_URL")
+	if callbackURL == "" {
+		callbackURL = "https://shiroine.web.id"
+	}
+	callbackURL += "/api/callbacks/iskapay"
+
 	// Prepare transaction data for Iskapay
-	// Based on the JavaScript example: createPayment({ amount, paymentMethod, customerName })
+	// Based on the problem statement API structure
 	transactionData := map[string]interface{}{
-		"amount":        req.Amount,
-		"paymentMethod": "qris", // Iskapay only supports QRIS
-		"customerName":  customerName,
+		"amount":         req.Amount,
+		"customer_name":  customerName,
+		"customer_email": fmt.Sprintf("%s@shiroine.web.id", customerPhone), // Generate email from phone
+		"customer_phone": customerPhone,
+		"description":    description,
+		"callback_url":   callbackURL,
 	}
 
 	jsonData, err := json.Marshal(transactionData)
@@ -116,6 +145,15 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 	}
 
 	// Check if the response is successful
+	success, _ := result["success"].(bool)
+	if !success {
+		message := "Failed to create transaction"
+		if msg, ok := result["message"].(string); ok {
+			message = msg
+		}
+		return nil, fmt.Errorf(message)
+	}
+
 	if data, ok := result["data"].(map[string]interface{}); ok {
 		// Extract merchant_order_id from response
 		merchantOrderID := ""
@@ -155,6 +193,24 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 			}
 		}
 
+		// Transform response to match expected format
+		// Add payment_url (checkout_url) for frontend redirect
+		if paymentURL, ok := data["payment_url"].(string); ok {
+			// Append return URL with merchant_order_id parameter
+			if merchantOrderID != "" && req.ReturnURL != "" {
+				separator := "?"
+				if strings.Contains(req.ReturnURL, "?") {
+					separator = "&"
+				}
+				returnURLParam := separator + "merchant_order_id=" + merchantOrderID
+				// Note: payment_url already has the redirect URL, we just need to track the order
+				data["checkout_url"] = paymentURL
+				data["return_url_with_order"] = req.ReturnURL + returnURLParam
+			} else {
+				data["checkout_url"] = paymentURL
+			}
+		}
+
 		return data, nil
 	}
 
@@ -166,7 +222,7 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 }
 
 // GetTransactionStatus retrieves the status of a transaction
-// Based on the JavaScript example: getPayment(orderId)
+// Based on the problem statement: GET /payments/{merchant_order_id}
 func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, error) {
 	if g.APIKey == "" {
 		return nil, fmt.Errorf("payment gateway not configured")
@@ -197,15 +253,36 @@ func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, erro
 		return nil, fmt.Errorf("failed to parse response: %v", err)
 	}
 
+	success, _ := result["success"].(bool)
+	if !success {
+		return nil, fmt.Errorf("transaction not found")
+	}
+
 	if data, ok := result["data"].(map[string]interface{}); ok {
 		// Update transaction status in database
 		if g.db != nil && data["status"] != nil {
 			status := data["status"].(string)
+			
+			// Map Iskapay status to our internal status
+			dbStatus := "UNPAID"
+			switch status {
+			case "pending":
+				dbStatus = "UNPAID"
+			case "paid", "completed":
+				dbStatus = "PAID"
+			case "failed":
+				dbStatus = "FAILED"
+			case "expired":
+				dbStatus = "EXPIRED"
+			case "cancelled":
+				dbStatus = "CANCELLED"
+			}
+
 			_, err := g.db.Exec(`
 				UPDATE payment_history 
 				SET status = $1, updated_at = $2
 				WHERE reference = $3 OR merchant_ref = $3
-			`, status, time.Now(), orderId)
+			`, dbStatus, time.Now(), orderId)
 			if err != nil {
 				log.Printf("Failed to update transaction status: %v", err)
 			}
@@ -259,9 +336,8 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 		return fmt.Errorf("merchant_order_id not found in callback")
 	}
 
-	// Process based on event type
-	switch event {
-	case "payment.completed":
+	// Process based on event type or status
+	if event == "payment.completed" || paymentStatus == "paid" || paymentStatus == "completed" {
 		log.Printf("Payment completed for merchant_order_id: %s", merchantOrderID)
 
 		// Parse paid_at timestamp if available
@@ -294,7 +370,7 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 			}
 		}
 
-	case "payment.failed":
+	} else if event == "payment.failed" || paymentStatus == "failed" {
 		log.Printf("Payment failed for merchant_order_id: %s", merchantOrderID)
 
 		if g.db != nil {
@@ -308,7 +384,7 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 			}
 		}
 
-	case "payment.expired":
+	} else if event == "payment.expired" || paymentStatus == "expired" {
 		log.Printf("Payment expired for merchant_order_id: %s", merchantOrderID)
 
 		if g.db != nil {
@@ -322,7 +398,7 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 			}
 		}
 
-	case "payment.cancelled":
+	} else if event == "payment.cancelled" || paymentStatus == "cancelled" {
 		log.Printf("Payment cancelled for merchant_order_id: %s", merchantOrderID)
 
 		if g.db != nil {
@@ -336,8 +412,8 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 			}
 		}
 
-	default:
-		log.Printf("Unknown event type: %s for merchant_order_id: %s", event, merchantOrderID)
+	} else {
+		log.Printf("Unknown event type or status: event=%s, status=%s for merchant_order_id: %s", event, paymentStatus, merchantOrderID)
 	}
 
 	return nil
