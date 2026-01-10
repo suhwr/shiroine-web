@@ -278,13 +278,49 @@ func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, erro
 				dbStatus = "CANCELLED"
 			}
 
-			_, err := g.db.Exec(`
-				UPDATE payment_history 
-				SET status = $1, updated_at = $2
-				WHERE reference = $3 OR merchant_ref = $3
-			`, dbStatus, time.Now(), orderId)
-			if err != nil {
-				log.Printf("Failed to update transaction status: %v", err)
+			// Check current status in database before updating
+			var currentStatus string
+			err := g.db.QueryRow(`
+				SELECT status FROM payment_history 
+				WHERE reference = $1 OR merchant_ref = $1
+			`, orderId).Scan(&currentStatus)
+
+			// Handle missing record or status change
+			if err == sql.ErrNoRows {
+				// Payment record doesn't exist in DB yet - this shouldn't happen
+				// but we'll log it and skip the update
+				log.Printf("Warning: Payment record not found in database for merchant_order_id=%s", orderId)
+			} else if err != nil {
+				// Database error - log it
+				log.Printf("Failed to check current payment status: %v", err)
+			} else if currentStatus != dbStatus {
+				// Status has changed - update and trigger activation if needed
+				now := time.Now()
+				var paidAt interface{}
+				if dbStatus == "PAID" {
+					paidAt = now
+				} else {
+					paidAt = nil
+				}
+
+				_, err := g.db.Exec(`
+					UPDATE payment_history 
+					SET status = $1, paid_at = $2, updated_at = $3
+					WHERE reference = $4 OR merchant_ref = $4
+				`, dbStatus, paidAt, now, orderId)
+				if err != nil {
+					log.Printf("Failed to update transaction status: %v", err)
+				} else {
+					log.Printf("Iskapay status updated: merchant_order_id=%s, status=%s (was %s)", orderId, dbStatus, currentStatus)
+				}
+
+				// Trigger premium activation for PAID status (since Iskapay has no callback)
+				if dbStatus == "PAID" {
+					log.Printf("Payment completed for merchant_order_id: %s (detected via status check)", orderId)
+					if err := activatePremium(g.db, orderId); err != nil {
+						log.Printf("Failed to activate premium: %v", err)
+					}
+				}
 			}
 		}
 
