@@ -213,12 +213,12 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		pakasirMethod = mapped
 	}
 
-	// For QRIS and VA methods, use API integration
-	if pakasirMethod == "qris" || strings.Contains(pakasirMethod, "_va") {
+	// For QRIS, VA, and PayPal methods, use API integration
+	if pakasirMethod == "qris" || strings.Contains(pakasirMethod, "_va") || pakasirMethod == "paypal" {
 		return g.createAPITransaction(req, orderID, pakasirMethod, description)
 	}
 
-	// For PayPal and other methods, use URL-based integration
+	// For other methods, use URL-based integration
 	return g.createURLTransaction(req, orderID, pakasirMethod, description)
 }
 
@@ -290,8 +290,13 @@ func (g *PakasirGateway) createAPITransaction(req CreateTransactionRequest, orde
 //	}
 
 	expiredAt := ""
+	var expiredAtTime *time.Time
 	if exp, ok := paymentData["expired_at"].(string); ok {
 		expiredAt = exp
+		// Parse the time for database storage
+		if parsedTime, err := time.Parse(time.RFC3339, exp); err == nil {
+			expiredAtTime = &parsedTime
+		}
 	}
 
 	// Save to payment_history table
@@ -312,8 +317,8 @@ func (g *PakasirGateway) createAPITransaction(req CreateTransactionRequest, orde
 
 		_, err := g.db.Exec(`
 			INSERT INTO payment_history 
-			(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, payment_number, expired_at, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		`,
 			merchantOrderID,
 			merchantOrderID,
@@ -324,6 +329,8 @@ func (g *PakasirGateway) createAPITransaction(req CreateTransactionRequest, orde
 			totalPayment,
 			"UNPAID",
 			orderItemsJSON,
+			paymentNumber,
+			expiredAtTime,
 			time.Now(),
 		)
 		if err != nil {
@@ -423,6 +430,8 @@ func (g *PakasirGateway) createURLTransaction(req CreateTransactionRequest, orde
 }
 
 // GetTransactionStatus retrieves the status of a transaction
+// For QRIS: Uses Pakasir API to check transaction status
+// For PayPal and VA: Relies solely on callback, returns database status
 func (g *PakasirGateway) GetTransactionStatus(orderId string) (interface{}, error) {
 	if g.APIKey == "" || g.Slug == "" {
 		return nil, fmt.Errorf("payment gateway not configured")
@@ -430,16 +439,50 @@ func (g *PakasirGateway) GetTransactionStatus(orderId string) (interface{}, erro
 
 	// First, check database for transaction details
 	var amount int
+	var method string
+	var status string
+	var paymentNumber sql.NullString
+	var expiredAt sql.NullTime
+	var paidAt sql.NullTime
+	
 	err := g.db.QueryRow(`
-		SELECT amount FROM payment_history 
+		SELECT amount, method, status, payment_number, expired_at, paid_at 
+		FROM payment_history 
 		WHERE reference = $1 OR merchant_ref = $1
-	`, orderId).Scan(&amount)
+	`, orderId).Scan(&amount, &method, &status, &paymentNumber, &expiredAt, &paidAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("transaction not found in database")
 	}
 
-	// Use Pakasir API to get transaction detail
+	// For PayPal and Virtual Account, rely solely on callback (database status)
+	// Only use API check for QRIS
+	methodLower := strings.ToLower(method)
+	if methodLower == "paypal" || strings.Contains(methodLower, "_va") || strings.Contains(methodLower, "virtual") {
+		// Return database status without API check
+		responseData := map[string]interface{}{
+			"merchant_order_id": orderId,
+			"payment_method":    method,
+			"amount":            amount,
+			"status":            strings.ToLower(status),
+		}
+		
+		if paymentNumber.Valid {
+			responseData["payment_number"] = paymentNumber.String
+		}
+		
+		if expiredAt.Valid {
+			responseData["expired_at"] = expiredAt.Time.Format(time.RFC3339)
+		}
+		
+		if paidAt.Valid {
+			responseData["paid_at"] = paidAt.Time.Format(time.RFC3339)
+		}
+		
+		return responseData, nil
+	}
+
+	// For QRIS, use Pakasir API to get transaction detail
 	client := &http.Client{Timeout: 30 * time.Second}
 	url := fmt.Sprintf("%s/api/transactiondetail?project=%s&amount=%d&order_id=%s&api_key=%s",
 		g.APIURL, g.Slug, amount, orderId, g.APIKey)
