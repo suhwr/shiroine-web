@@ -16,6 +16,7 @@ const PaymentPage = () => {
   const [paymentData, setPaymentData] = useState(null);
   const [error, setError] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
+  const [qrImageError, setQrImageError] = useState(false);
   
   const { invoiceId } = useParams();
   const navigate = useNavigate();
@@ -87,14 +88,19 @@ const PaymentPage = () => {
     }
   }, [invoiceId, language]);
 
-  // Initial fetch and setup polling for Iskapay
+  // Initial fetch and setup polling
   useEffect(() => {
     fetchPaymentStatus(true);
 
     // Set up polling interval - check every 10 seconds
+    // This is a balance between real-time updates and server load
+    // For Iskapay (no webhooks), this provides near-real-time status updates
+    // For Tripay (has webhooks), this ensures consistency and handles missed webhooks
+    const POLL_INTERVAL = 10000; // 10 seconds
+    
     pollIntervalRef.current = setInterval(() => {
       fetchPaymentStatus(false);
-    }, 10000);
+    }, POLL_INTERVAL);
 
     // Cleanup on unmount
     return () => {
@@ -108,9 +114,11 @@ const PaymentPage = () => {
   useEffect(() => {
     if (!paymentData || !paymentData.expired_at) return;
 
+    const expiredAt = paymentData.expired_at;
+    
     const updateTimeRemaining = () => {
       const now = new Date();
-      const expiry = new Date(paymentData.expired_at);
+      const expiry = new Date(expiredAt);
       const diff = expiry - now;
 
       if (diff <= 0) {
@@ -133,7 +141,7 @@ const PaymentPage = () => {
     const timer = setInterval(updateTimeRemaining, 1000);
 
     return () => clearInterval(timer);
-  }, [paymentData, language]);
+  }, [paymentData?.expired_at, language]);
 
   const getStatusInfo = () => {
     if (!paymentData) return { icon: Clock, color: 'text-gray-400', text: language === 'id' ? 'Memuat...' : 'Loading...', bgColor: 'bg-gray-500/10' };
@@ -374,21 +382,24 @@ const PaymentPage = () => {
                         {/* QR Code Display */}
                         <div className="flex justify-center mb-6">
                           <div className="bg-white p-4 rounded-lg">
-                            <img 
-                              src={paymentData.qr_code} 
-                              alt="QR Code" 
-                              className="w-64 h-64 object-contain"
-                              onError={(e) => {
-                                // Fallback to QRCodeSVG if image fails to load
-                                e.target.style.display = 'none';
-                                const qrString = paymentData.qr_string || paymentData.qr_code;
-                                if (qrString) {
-                                  const container = e.target.parentElement;
-                                  const svg = document.createElement('div');
-                                  container.appendChild(svg);
-                                }
-                              }}
-                            />
+                            {!qrImageError ? (
+                              <img 
+                                src={paymentData.qr_code} 
+                                alt="QR Code" 
+                                className="w-64 h-64 object-contain"
+                                onError={() => setQrImageError(true)}
+                              />
+                            ) : (
+                              // Fallback to QRCodeSVG if image fails to load
+                              paymentData.qr_string && (
+                                <QRCodeSVG 
+                                  value={paymentData.qr_string} 
+                                  size={256}
+                                  level="H"
+                                  includeMargin={true}
+                                />
+                              )
+                            )}
                           </div>
                         </div>
 
