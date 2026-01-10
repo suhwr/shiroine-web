@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageCircle, Globe, Clock, CheckCircle, XCircle, Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
+import { MessageCircle, Globe, Clock, CheckCircle, XCircle, Loader2, ArrowLeft, RefreshCw, Copy } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { translations } from '../translations';
 import { PAYMENT_API_CONFIG, CONTACT_INFO } from '../config';
@@ -490,21 +490,20 @@ const PaymentPage = () => {
                             <p className="text-sm text-gray-400 mb-2">
                               {language === 'id' ? 'Nomor Virtual Account' : 'Virtual Account Number'}
                             </p>
-                            <div className="flex items-center justify-center gap-4">
-                              <p className="text-3xl font-mono font-bold text-yellow-400 tracking-wider">
-                                {paymentData.payment_number}
-                              </p>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(paymentData.payment_number);
-                                  toast.success(language === 'id' ? 'Nomor disalin!' : 'Number copied!');
-                                }}
-                                className="btn-secondary"
-                              >
-                                {language === 'id' ? 'Salin' : 'Copy'}
-                              </Button>
-                            </div>
+                            <p className="text-3xl font-mono font-bold text-yellow-400 tracking-wider text-center mb-4">
+                              {paymentData.payment_number}
+                            </p>
+                            <Button
+                              onClick={() => {
+                                navigator.clipboard.writeText(paymentData.payment_number);
+                                toast.success(language === 'id' ? 'Nomor disalin!' : 'Number copied!');
+                              }}
+                              className="w-full btn-primary text-lg py-6"
+                              size="lg"
+                            >
+                              <Copy className="w-6 h-6 mr-2" />
+                              {language === 'id' ? 'Salin Nomor Rekening' : 'Copy Account Number'}
+                            </Button>
                           </div>
                         </div>
 
