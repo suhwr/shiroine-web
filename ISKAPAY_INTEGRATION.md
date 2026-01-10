@@ -115,18 +115,51 @@ type PaymentGateway interface {
 
 ## Callback Handling
 
-Iskapay callbacks are expected to include:
+Iskapay sends callbacks with the following structure:
+
 ```json
 {
-  "merchant_order_id": "...",
-  "order_id": "...",
-  "status": "paid|pending|expired|failed"
+  "event": "payment.completed",
+  "payment": {
+    "id": 12345,
+    "merchant_order_id": "INV-1-20250112-ABCD",
+    "amount": 50000,
+    "status": "completed",
+    "created_at": "2025-01-12T09:00:00Z",
+    "paid_at": "2025-01-12T09:30:00Z"
+  },
+  "customer": {
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "timestamp": "2025-01-12T09:30:05Z",
+  "signature": "abc123def456..."
 }
 ```
 
-Status mapping:
-- `PAID`, `SUCCESS`, `paid`, `success` → Premium activated
-- `EXPIRED`, `FAILED`, `expired`, `failed` → Transaction marked as failed
+### Event Types
+
+The implementation handles the following event types:
+
+- **`payment.completed`**: Payment successful → Premium activated, status set to `PAID`
+- **`payment.failed`**: Payment failed → Status set to `FAILED`
+- **`payment.expired`**: Payment expired → Status set to `EXPIRED`
+- **`payment.cancelled`**: Payment cancelled → Status set to `CANCELLED`
+
+### Callback Processing
+
+1. Extract `event` type from callback payload
+2. Extract `payment.merchant_order_id` to identify the transaction
+3. Process based on event type:
+   - For `payment.completed`: Update status, record `paid_at`, activate premium
+   - For other events: Update status accordingly
+
+### Callback Endpoint
+
+Configure your Iskapay webhook to point to:
+```
+https://your-domain.com/callback
+```
 
 ## Troubleshooting
 
@@ -143,7 +176,7 @@ If you encounter connection issues:
 
 Enable detailed logging by checking server logs for:
 ```
-Iskapay Callback: order_id=..., status=..., timestamp=...
+Iskapay Callback: event=payment.completed, merchant_order_id=INV-123, status=completed, amount=50000, timestamp=...
 ```
 
 ## Next Steps

@@ -218,27 +218,64 @@ func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, erro
 }
 
 // HandleCallback processes payment callback from Iskapay
+// Callback format:
+// {
+//   "event": "payment.completed|payment.failed|payment.expired|payment.cancelled",
+//   "payment": {
+//     "id": 12345,
+//     "merchant_order_id": "INV-1-20250112-ABCD",
+//     "amount": 50000,
+//     "status": "completed",
+//     "created_at": "2025-01-12T09:00:00Z",
+//     "paid_at": "2025-01-12T09:30:00Z"
+//   },
+//   "customer": { "name": "...", "email": "..." },
+//   "timestamp": "2025-01-12T09:30:05Z",
+//   "signature": "abc123def456..."
+// }
 func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]string) error {
 	var callbackPayload map[string]interface{}
 	if err := json.Unmarshal(payload, &callbackPayload); err != nil {
 		return fmt.Errorf("invalid JSON payload: %v", err)
 	}
 
-	// Process callback based on payment status
-	// Extract merchant_order_id from the callback
-	orderId := callbackPayload["merchant_order_id"]
-	if orderId == nil {
-		orderId = callbackPayload["order_id"]
+	// Extract event type and payment data
+	event, _ := callbackPayload["event"].(string)
+	paymentData, ok := callbackPayload["payment"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("payment data not found in callback")
 	}
-	status := callbackPayload["status"]
 
-	log.Printf("Iskapay Callback: order_id=%v, status=%v, timestamp=%s",
-		orderId, status, time.Now().Format(time.RFC3339))
+	// Extract payment details
+	merchantOrderID, _ := paymentData["merchant_order_id"].(string)
+	paymentStatus, _ := paymentData["status"].(string)
+	amount, _ := paymentData["amount"].(float64)
+	paidAtStr, _ := paymentData["paid_at"].(string)
 
-	// Map Iskapay status to our internal status
-	// Common statuses: PAID, PENDING, EXPIRED, FAILED, SUCCESS
-	if status == "PAID" || status == "SUCCESS" || status == "paid" || status == "success" {
-		log.Printf("Payment successful for order_id: %v", orderId)
+	log.Printf("Iskapay Callback: event=%s, merchant_order_id=%s, status=%s, amount=%.0f, timestamp=%s",
+		event, merchantOrderID, paymentStatus, amount, time.Now().Format(time.RFC3339))
+
+	if merchantOrderID == "" {
+		return fmt.Errorf("merchant_order_id not found in callback")
+	}
+
+	// Process based on event type
+	switch event {
+	case "payment.completed":
+		log.Printf("Payment completed for merchant_order_id: %s", merchantOrderID)
+
+		// Parse paid_at timestamp if available
+		var paidAt time.Time
+		if paidAtStr != "" {
+			parsedTime, err := time.Parse(time.RFC3339, paidAtStr)
+			if err == nil {
+				paidAt = parsedTime
+			} else {
+				paidAt = time.Now()
+			}
+		} else {
+			paidAt = time.Now()
+		}
 
 		// Update payment_history table
 		if g.db != nil {
@@ -246,31 +283,61 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 				UPDATE payment_history 
 				SET status = $1, paid_at = $2, updated_at = $3
 				WHERE reference = $4 OR merchant_ref = $4
-			`, "PAID", time.Now(), time.Now(), orderId)
+			`, "PAID", paidAt, time.Now(), merchantOrderID)
 			if err != nil {
 				log.Printf("Failed to update payment history: %v", err)
 			}
 
 			// Activate premium
-			if err := activatePremium(g.db, fmt.Sprintf("%v", orderId)); err != nil {
+			if err := activatePremium(g.db, merchantOrderID); err != nil {
 				log.Printf("Failed to activate premium: %v", err)
 			}
 		}
-	} else if status == "EXPIRED" || status == "FAILED" || status == "expired" || status == "failed" {
-		log.Printf("Payment %v for order_id: %v", status, orderId)
 
-		// Update payment_history table
+	case "payment.failed":
+		log.Printf("Payment failed for merchant_order_id: %s", merchantOrderID)
+
 		if g.db != nil {
-			statusUpper := strings.ToUpper(fmt.Sprintf("%v", status))
 			_, err := g.db.Exec(`
 				UPDATE payment_history 
 				SET status = $1, updated_at = $2
 				WHERE reference = $3 OR merchant_ref = $3
-			`, statusUpper, time.Now(), orderId)
+			`, "FAILED", time.Now(), merchantOrderID)
 			if err != nil {
 				log.Printf("Failed to update payment history: %v", err)
 			}
 		}
+
+	case "payment.expired":
+		log.Printf("Payment expired for merchant_order_id: %s", merchantOrderID)
+
+		if g.db != nil {
+			_, err := g.db.Exec(`
+				UPDATE payment_history 
+				SET status = $1, updated_at = $2
+				WHERE reference = $3 OR merchant_ref = $3
+			`, "EXPIRED", time.Now(), merchantOrderID)
+			if err != nil {
+				log.Printf("Failed to update payment history: %v", err)
+			}
+		}
+
+	case "payment.cancelled":
+		log.Printf("Payment cancelled for merchant_order_id: %s", merchantOrderID)
+
+		if g.db != nil {
+			_, err := g.db.Exec(`
+				UPDATE payment_history 
+				SET status = $1, updated_at = $2
+				WHERE reference = $3 OR merchant_ref = $3
+			`, "CANCELLED", time.Now(), merchantOrderID)
+			if err != nil {
+				log.Printf("Failed to update payment history: %v", err)
+			}
+		}
+
+	default:
+		log.Printf("Unknown event type: %s for merchant_order_id: %s", event, merchantOrderID)
 	}
 
 	return nil
