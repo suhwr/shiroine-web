@@ -323,36 +323,6 @@ func (g *IskapayGateway) HandleCallback(payload []byte, headers map[string]strin
 		return fmt.Errorf("merchant_order_id not found in callback")
 	}
 
-	// Map Iskapay status to internal status
-	dbStatus := "UNPAID"
-	switch paymentStatus {
-	case "pending":
-		dbStatus = "UNPAID"
-	case "paid", "completed":
-		dbStatus = "PAID"
-	case "failed":
-		dbStatus = "FAILED"
-	case "expired":
-		dbStatus = "EXPIRED"
-	case "cancelled":
-		dbStatus = "CANCELLED"
-	}
-
-	// Map Iskapay status to internal status
-	dbStatus := "UNPAID"
-	switch paymentStatus {
-	case "pending":
-		dbStatus = "UNPAID"
-	case "paid", "completed":
-		dbStatus = "PAID"
-	case "failed":
-		dbStatus = "FAILED"
-	case "expired":
-		dbStatus = "EXPIRED"
-	case "cancelled":
-		dbStatus = "CANCELLED"
-	}
-
 	// Process based on event type or status
 	if event == "payment.completed" || paymentStatus == "paid" || paymentStatus == "completed" {
 		log.Printf("Payment completed for merchant_order_id: %s", merchantOrderID)
