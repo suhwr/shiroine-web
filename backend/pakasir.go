@@ -14,16 +14,25 @@ import (
 
 // PakasirGateway implements the PaymentGateway interface for Pakasir
 type PakasirGateway struct {
-	APIKey string
-	APIURL string
-	db     *sql.DB
+	APIKey  string
+	APIURL  string
+	Slug    string
+	Mode    string // sandbox or production
+	db      *sql.DB
 }
 
 // NewPakasirGateway creates a new Pakasir gateway instance
 func NewPakasirGateway() *PakasirGateway {
+	mode := os.Getenv("PAKASIR_MODE")
+	if mode == "" {
+		mode = "production"
+	}
+
 	gateway := &PakasirGateway{
 		APIKey: os.Getenv("PAKASIR_API_KEY"),
-		APIURL: "https://api.pakasir.com/v1",
+		APIURL: "https://app.pakasir.com",
+		Slug:   os.Getenv("PAKASIR_SLUG"),
+		Mode:   mode,
 	}
 
 	return gateway
@@ -39,22 +48,105 @@ func (g *PakasirGateway) Initialize(db *sql.DB) {
 	g.db = db
 }
 
-// GetPaymentChannels returns empty for Pakasir as it only supports QRIS
-// No need to list payment methods since it's QRIS-only
+// GetPaymentChannels returns available payment channels for Pakasir
+// Pakasir supports QRIS, Virtual Account, and PayPal
 func (g *PakasirGateway) GetPaymentChannels() (interface{}, error) {
-	// Pakasir only supports QRIS, so we return a fixed structure
-	return []map[string]interface{}{
+	// Pakasir supports multiple payment methods
+	channels := []map[string]interface{}{
 		{
 			"code":   "QRIS",
 			"name":   "QRIS",
 			"type":   "qris",
+			"group":  "E-Wallet",
 			"active": true,
 			"icon":   "qris.png",
 		},
-	}, nil
+		{
+			"code":   "CIMB_NIAGA_VA",
+			"name":   "CIMB Niaga Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "cimb.png",
+		},
+		{
+			"code":   "BNI_VA",
+			"name":   "BNI Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "bni.png",
+		},
+		{
+			"code":   "BRI_VA",
+			"name":   "BRI Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "bri.png",
+		},
+		{
+			"code":   "PERMATA_VA",
+			"name":   "Permata Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "permata.png",
+		},
+		{
+			"code":   "SAMPOERNA_VA",
+			"name":   "Sampoerna Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "sampoerna.png",
+		},
+		{
+			"code":   "BNC_VA",
+			"name":   "BNC Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "bnc.png",
+		},
+		{
+			"code":   "MAYBANK_VA",
+			"name":   "Maybank Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "maybank.png",
+		},
+		{
+			"code":   "ATM_BERSAMA_VA",
+			"name":   "ATM Bersama Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "atm_bersama.png",
+		},
+		{
+			"code":   "ARTHA_GRAHA_VA",
+			"name":   "Artha Graha Virtual Account",
+			"type":   "virtual_account",
+			"group":  "Virtual Account",
+			"active": true,
+			"icon":   "artha_graha.png",
+		},
+		{
+			"code":   "PAYPAL",
+			"name":   "PayPal",
+			"type":   "paypal",
+			"group":  "International",
+			"active": true,
+			"icon":   "paypal.png",
+		},
+	}
+
+	return channels, nil
 }
 
-// CreateTransaction creates a new QRIS payment transaction with Pakasir
+// CreateTransaction creates a new payment transaction with Pakasir
 func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interface{}, error) {
 	// Validate required fields
 	if req.Amount == 0 || req.OrderItems == nil {
@@ -66,7 +158,7 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		return nil, fmt.Errorf("either phone number or group ID is required")
 	}
 
-	if g.APIKey == "" {
+	if g.APIKey == "" || g.Slug == "" {
 		return nil, fmt.Errorf("payment gateway not configured properly")
 	}
 
@@ -95,22 +187,49 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		}
 	}
 
-	// Prepare callback URL
-	domain := os.Getenv("DOMAIN")
-	if domain == "" {
-		domain = "shiroine.my.id"
-	}
-	callbackURL := fmt.Sprintf("https://%s/callback", domain)
+	// Generate order ID
+	orderID := fmt.Sprintf("INV-%s-%d", time.Now().Format("20060102"), time.Now().UnixNano()%1000000)
 
-	// Prepare transaction data for Pakasir
-	// Based on typical QRIS payment gateway API structure
+	// Map payment method code to Pakasir method
+	pakasirMethod := strings.ToLower(req.Method)
+	pakasirMethod = strings.ReplaceAll(pakasirMethod, "_", "")
+	
+	// Map common codes to Pakasir format
+	methodMap := map[string]string{
+		"qris":          "qris",
+		"cimbniagava":   "cimb_niaga_via",
+		"bniva":         "bni_va",
+		"briva":         "bri_va",
+		"permatava":     "permata_va",
+		"sampornava":    "sampoerna_va",
+		"bncva":         "bnc_va",
+		"maybankva":     "maybank_va",
+		"atmbersama":    "atm_bersama_va",
+		"arthagraha":    "artha_graha_va",
+		"paypal":        "paypal",
+	}
+	
+	if mapped, ok := methodMap[pakasirMethod]; ok {
+		pakasirMethod = mapped
+	}
+
+	// For QRIS and VA methods, use API integration
+	if pakasirMethod == "qris" || strings.Contains(pakasirMethod, "_va") {
+		return g.createAPITransaction(req, orderID, pakasirMethod, description)
+	}
+
+	// For PayPal and other methods, use URL-based integration
+	return g.createURLTransaction(req, orderID, pakasirMethod, description)
+}
+
+// createAPITransaction creates transaction using Pakasir API
+func (g *PakasirGateway) createAPITransaction(req CreateTransactionRequest, orderID, method, description string) (interface{}, error) {
+	// Prepare transaction data for Pakasir API
 	transactionData := map[string]interface{}{
-		"amount":       req.Amount,
-		"customer_name": customerName,
-		"customer_email": fmt.Sprintf("noreply@%s", domain),
-		"customer_phone": customerPhone,
-		"description":   description,
-		"callback_url":  callbackURL,
+		"project":  g.Slug,
+		"order_id": orderID,
+		"amount":   req.Amount,
+		"api_key":  g.APIKey,
 	}
 
 	jsonData, err := json.Marshal(transactionData)
@@ -118,14 +237,14 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		return nil, fmt.Errorf("failed to create transaction data: %v", err)
 	}
 
-	// Create transaction with Pakasir
+	// Create transaction with Pakasir API
 	client := &http.Client{Timeout: 30 * time.Second}
-	httpReq, err := http.NewRequest("POST", g.APIURL+"/payments", strings.NewReader(string(jsonData)))
+	url := fmt.Sprintf("%s/api/transactioncreate/%s", g.APIURL, method)
+	httpReq, err := http.NewRequest("POST", url, strings.NewReader(string(jsonData)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+g.APIKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(httpReq)
@@ -144,9 +263,9 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		return nil, fmt.Errorf("failed to parse response: %v", err)
 	}
 
-	// Check if the response is successful
-	success, _ := result["success"].(bool)
-	if !success {
+	// Check if payment data exists in response
+	paymentData, ok := result["payment"].(map[string]interface{})
+	if !ok {
 		message := "Failed to create transaction"
 		if msg, ok := result["message"].(string); ok {
 			message = msg
@@ -154,86 +273,181 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 		return nil, fmt.Errorf(message)
 	}
 
-	if data, ok := result["data"].(map[string]interface{}); ok {
-		// Extract merchant_order_id from response
-		merchantOrderID := ""
-		if id, ok := data["merchant_order_id"].(string); ok {
-			merchantOrderID = id
-		} else if id, ok := data["order_id"].(string); ok {
-			merchantOrderID = id
-		} else if id, ok := data["reference"].(string); ok {
-			merchantOrderID = id
-		}
-
-		// Save to payment_history table
-		if g.db != nil && merchantOrderID != "" {
-			orderItemsJSON, _ := json.Marshal(req.OrderItems)
-			var phoneNumber, groupID sql.NullString
-			if req.CustomerPhone != "" {
-				phoneNumber = sql.NullString{String: req.CustomerPhone, Valid: true}
-			}
-			if req.GroupID != "" {
-				groupID = sql.NullString{String: req.GroupID, Valid: true}
-			}
-
-			_, err := g.db.Exec(`
-				INSERT INTO payment_history 
-				(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			`,
-				merchantOrderID,
-				merchantOrderID,
-				phoneNumber,
-				groupID,
-				customerName,
-				"QRIS",
-				req.Amount,
-				"UNPAID",
-				orderItemsJSON,
-				time.Now(),
-			)
-			if err != nil {
-				log.Printf("Failed to save transaction to database: %v", err)
-			}
-		}
-
-		// Transform response to match expected format
-		// Add payment_url (checkout_url) for frontend redirect
-		if paymentURL, ok := data["payment_url"].(string); ok {
-			data["checkout_url"] = paymentURL
-		} else if qrURL, ok := data["qr_url"].(string); ok {
-			data["checkout_url"] = qrURL
-		}
-
-		// Ensure merchant_order_id is set for consistency
-		if merchantOrderID != "" {
-			data["merchant_order_id"] = merchantOrderID
-		}
-
-		return data, nil
+	// Extract payment details
+	merchantOrderID := orderID
+	if id, ok := paymentData["order_id"].(string); ok {
+		merchantOrderID = id
 	}
 
-	message := "Failed to create transaction"
-	if msg, ok := result["message"].(string); ok {
-		message = msg
+	paymentNumber := ""
+	if num, ok := paymentData["payment_number"].(string); ok {
+		paymentNumber = num
 	}
-	return nil, fmt.Errorf(message)
+
+	totalPayment := req.Amount
+	if total, ok := paymentData["total_payment"].(float64); ok {
+		totalPayment = int(total)
+	}
+
+	expiredAt := ""
+	if exp, ok := paymentData["expired_at"].(string); ok {
+		expiredAt = exp
+	}
+
+	// Save to payment_history table
+	if g.db != nil {
+		orderItemsJSON, _ := json.Marshal(req.OrderItems)
+		var phoneNumber, groupID sql.NullString
+		if req.CustomerPhone != "" {
+			phoneNumber = sql.NullString{String: req.CustomerPhone, Valid: true}
+		}
+		if req.GroupID != "" {
+			groupID = sql.NullString{String: req.GroupID, Valid: true}
+		}
+
+		customerName := req.CustomerName
+		if customerName == "" {
+			customerName = fmt.Sprintf("Customer-%s", req.CustomerPhone)
+		}
+
+		_, err := g.db.Exec(`
+			INSERT INTO payment_history 
+			(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`,
+			merchantOrderID,
+			merchantOrderID,
+			phoneNumber,
+			groupID,
+			customerName,
+			strings.ToUpper(req.Method),
+			totalPayment,
+			"UNPAID",
+			orderItemsJSON,
+			time.Now(),
+		)
+		if err != nil {
+			log.Printf("Failed to save transaction to database: %v", err)
+		}
+	}
+
+	// Transform response to match expected format
+	responseData := map[string]interface{}{
+		"merchant_order_id": merchantOrderID,
+		"payment_method":    method,
+		"payment_number":    paymentNumber,
+		"qr_code":           paymentNumber, // For QRIS, payment_number is the QR string
+		"amount":            req.Amount,
+		"total_amount":      totalPayment,
+		"expired_at":        expiredAt,
+		"status":            "pending",
+	}
+
+	// Add fee if available
+	if fee, ok := paymentData["fee"].(float64); ok {
+		responseData["fee"] = int(fee)
+	}
+
+	return responseData, nil
+}
+
+// createURLTransaction creates transaction using Pakasir URL-based integration
+func (g *PakasirGateway) createURLTransaction(req CreateTransactionRequest, orderID, method, description string) (interface{}, error) {
+	// For URL-based integration, we create a checkout URL
+	// Format: https://app.pakasir.com/pay/{slug}/{amount}?order_id={order_id}
+	// Or for PayPal: https://app.pakasir.com/paypal/{slug}/{amount}?order_id={order_id}
+	
+	baseURL := g.APIURL
+	pathPrefix := "/pay/"
+	if method == "paypal" {
+		pathPrefix = "/paypal/"
+	}
+
+	// Build checkout URL
+	domain := os.Getenv("DOMAIN")
+	if domain == "" {
+		domain = "shiroine.my.id"
+	}
+	
+	checkoutURL := fmt.Sprintf("%s%s%s/%d?order_id=%s&redirect=https://%s/pay/%s",
+		baseURL, pathPrefix, g.Slug, req.Amount, orderID, domain, orderID)
+
+	// Save to payment_history table
+	if g.db != nil {
+		orderItemsJSON, _ := json.Marshal(req.OrderItems)
+		var phoneNumber, groupID sql.NullString
+		if req.CustomerPhone != "" {
+			phoneNumber = sql.NullString{String: req.CustomerPhone, Valid: true}
+		}
+		if req.GroupID != "" {
+			groupID = sql.NullString{String: req.GroupID, Valid: true}
+		}
+
+		customerName := req.CustomerName
+		if customerName == "" {
+			customerName = fmt.Sprintf("Customer-%s", req.CustomerPhone)
+		}
+
+		_, err := g.db.Exec(`
+			INSERT INTO payment_history 
+			(reference, merchant_ref, phone_number, group_id, customer_name, method, amount, status, order_items, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`,
+			orderID,
+			orderID,
+			phoneNumber,
+			groupID,
+			customerName,
+			strings.ToUpper(req.Method),
+			req.Amount,
+			"UNPAID",
+			orderItemsJSON,
+			time.Now(),
+		)
+		if err != nil {
+			log.Printf("Failed to save transaction to database: %v", err)
+		}
+	}
+
+	// Return response with checkout URL
+	responseData := map[string]interface{}{
+		"merchant_order_id": orderID,
+		"payment_method":    method,
+		"checkout_url":      checkoutURL,
+		"amount":            req.Amount,
+		"total_amount":      req.Amount,
+		"status":            "pending",
+	}
+
+	return responseData, nil
 }
 
 // GetTransactionStatus retrieves the status of a transaction
 func (g *PakasirGateway) GetTransactionStatus(orderId string) (interface{}, error) {
-	if g.APIKey == "" {
+	if g.APIKey == "" || g.Slug == "" {
 		return nil, fmt.Errorf("payment gateway not configured")
 	}
 
+	// First, check database for transaction details
+	var amount int
+	err := g.db.QueryRow(`
+		SELECT amount FROM payment_history 
+		WHERE reference = $1 OR merchant_ref = $1
+	`, orderId).Scan(&amount)
+
+	if err != nil {
+		return nil, fmt.Errorf("transaction not found in database")
+	}
+
+	// Use Pakasir API to get transaction detail
 	client := &http.Client{Timeout: 30 * time.Second}
-	url := fmt.Sprintf("%s/payments/%s", g.APIURL, orderId)
+	url := fmt.Sprintf("%s/api/transactiondetail?project=%s&amount=%d&order_id=%s&api_key=%s",
+		g.APIURL, g.Slug, amount, orderId, g.APIKey)
+	
 	httpReq, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
-
-	httpReq.Header.Set("Authorization", "Bearer "+g.APIKey)
 
 	resp, err := client.Do(httpReq)
 	if err != nil {
@@ -251,93 +465,86 @@ func (g *PakasirGateway) GetTransactionStatus(orderId string) (interface{}, erro
 		return nil, fmt.Errorf("failed to parse response: %v", err)
 	}
 
-	success, _ := result["success"].(bool)
-	if !success {
+	// Check if transaction data exists
+	transactionData, ok := result["transaction"].(map[string]interface{})
+	if !ok {
 		return nil, fmt.Errorf("transaction not found")
 	}
 
-	if data, ok := result["data"].(map[string]interface{}); ok {
-		// Update transaction status in database
-		if g.db != nil && data["status"] != nil {
-			status := data["status"].(string)
+	// Update transaction status in database
+	if g.db != nil && transactionData["status"] != nil {
+		status := transactionData["status"].(string)
 
-			// Map Pakasir status to our internal status
-			dbStatus := "UNPAID"
-			switch status {
-			case "pending":
-				dbStatus = "UNPAID"
-			case "paid", "completed", "success":
-				dbStatus = "PAID"
-			case "failed":
-				dbStatus = "FAILED"
-			case "expired":
-				dbStatus = "EXPIRED"
-			case "cancelled":
-				dbStatus = "CANCELLED"
+		// Map Pakasir status to our internal status
+		dbStatus := "UNPAID"
+		switch status {
+		case "pending":
+			dbStatus = "UNPAID"
+		case "paid", "completed", "success":
+			dbStatus = "PAID"
+		case "failed":
+			dbStatus = "FAILED"
+		case "expired":
+			dbStatus = "EXPIRED"
+		case "cancelled":
+			dbStatus = "CANCELLED"
+		}
+
+		// Check current status in database before updating
+		var currentStatus string
+		err := g.db.QueryRow(`
+			SELECT status FROM payment_history 
+			WHERE reference = $1 OR merchant_ref = $1
+		`, orderId).Scan(&currentStatus)
+
+		// Handle missing record or status change
+		if err == sql.ErrNoRows {
+			log.Printf("Warning: Payment record not found in database for order_id=%s", orderId)
+		} else if err != nil {
+			log.Printf("Failed to check current payment status: %v", err)
+		} else if currentStatus != dbStatus {
+			// Status has changed - update and trigger activation if needed
+			now := time.Now()
+			var paidAt interface{}
+			if dbStatus == "PAID" {
+				paidAt = now
+			} else {
+				paidAt = nil
 			}
 
-			// Check current status in database before updating
-			var currentStatus string
-			err := g.db.QueryRow(`
-				SELECT status FROM payment_history 
-				WHERE reference = $1 OR merchant_ref = $1
-			`, orderId).Scan(&currentStatus)
+			_, err := g.db.Exec(`
+				UPDATE payment_history 
+				SET status = $1, paid_at = $2, updated_at = $3
+				WHERE reference = $4 OR merchant_ref = $4
+			`, dbStatus, paidAt, now, orderId)
+			if err != nil {
+				log.Printf("Failed to update transaction status: %v", err)
+			} else {
+				log.Printf("Pakasir status updated: order_id=%s, status=%s (was %s)", orderId, dbStatus, currentStatus)
+			}
 
-			// Handle missing record or status change
-			if err == sql.ErrNoRows {
-				// Payment record doesn't exist in DB yet - this shouldn't happen
-				// but we'll log it and skip the update
-				log.Printf("Warning: Payment record not found in database for order_id=%s", orderId)
-			} else if err != nil {
-				// Database error - log it
-				log.Printf("Failed to check current payment status: %v", err)
-			} else if currentStatus != dbStatus {
-				// Status has changed - update and trigger activation if needed
-				now := time.Now()
-				var paidAt interface{}
-				if dbStatus == "PAID" {
-					paidAt = now
-				} else {
-					paidAt = nil
-				}
-
-				_, err := g.db.Exec(`
-					UPDATE payment_history 
-					SET status = $1, paid_at = $2, updated_at = $3
-					WHERE reference = $4 OR merchant_ref = $4
-				`, dbStatus, paidAt, now, orderId)
-				if err != nil {
-					log.Printf("Failed to update transaction status: %v", err)
-				} else {
-					log.Printf("Pakasir status updated: order_id=%s, status=%s (was %s)", orderId, dbStatus, currentStatus)
-				}
-
-				// Trigger premium activation for PAID status
-				if dbStatus == "PAID" {
-					log.Printf("Payment completed for order_id: %s (detected via status check)", orderId)
-					if err := activatePremium(g.db, orderId); err != nil {
-						log.Printf("Failed to activate premium: %v", err)
-					}
+			// Trigger premium activation for PAID status
+			if dbStatus == "PAID" {
+				log.Printf("Payment completed for order_id: %s (detected via status check)", orderId)
+				if err := activatePremium(g.db, orderId); err != nil {
+					log.Printf("Failed to activate premium: %v", err)
 				}
 			}
 		}
-
-		return data, nil
 	}
 
-	return nil, fmt.Errorf("transaction not found")
+	return transactionData, nil
 }
 
 // HandleCallback processes payment callback from Pakasir
-// Callback format (similar to Tripay and Iskapay):
+// Callback format (from Pakasir documentation):
 // {
-//   "event": "payment.paid|payment.failed|payment.expired",
-//   "data": {
-//     "merchant_order_id": "INV-xxx",
-//     "amount": 50000,
-//     "status": "paid",
-//     "paid_at": "2025-01-10T09:00:00Z"
-//   }
+//   "amount": 22000,
+//   "order_id": "240910HDE7C9",
+//   "project": "depodomain",
+//   "status": "completed",
+//   "payment_method": "qris",
+//   "completed_at": "2024-09-10T08:07:02.819+07:00"
 // }
 func (g *PakasirGateway) HandleCallback(payload []byte, headers map[string]string) error {
 	var callbackPayload map[string]interface{}
@@ -345,58 +552,35 @@ func (g *PakasirGateway) HandleCallback(payload []byte, headers map[string]strin
 		return fmt.Errorf("invalid JSON payload: %v", err)
 	}
 
-	// Extract event type and payment data
-	event, _ := callbackPayload["event"].(string)
+	// Extract payment details from Pakasir webhook format
+	orderID, _ := callbackPayload["order_id"].(string)
+	status, _ := callbackPayload["status"].(string)
+	amount, _ := callbackPayload["amount"].(float64)
+	completedAtStr, _ := callbackPayload["completed_at"].(string)
+	paymentMethod, _ := callbackPayload["payment_method"].(string)
 
-	// Try to get payment data from different possible structures
-	var paymentData map[string]interface{}
-	var ok bool
+	log.Printf("Pakasir Callback: order_id=%s, status=%s, amount=%.0f, payment_method=%s, timestamp=%s",
+		orderID, status, amount, paymentMethod, time.Now().Format(time.RFC3339))
 
-	// Try "data" field first
-	if paymentData, ok = callbackPayload["data"].(map[string]interface{}); !ok {
-		// Try "payment" field (Iskapay style)
-		if paymentData, ok = callbackPayload["payment"].(map[string]interface{}); !ok {
-			// If no nested structure, use the root payload (Tripay style)
-			paymentData = callbackPayload
-		}
+	if orderID == "" {
+		return fmt.Errorf("order_id not found in callback")
 	}
 
-	// Extract payment details
-	merchantOrderID := ""
-	if id, ok := paymentData["merchant_order_id"].(string); ok {
-		merchantOrderID = id
-	} else if id, ok := paymentData["order_id"].(string); ok {
-		merchantOrderID = id
-	} else if id, ok := paymentData["reference"].(string); ok {
-		merchantOrderID = id
-	}
+	// Process based on status
+	if status == "completed" || status == "paid" || status == "success" {
+		log.Printf("Payment completed for order_id: %s", orderID)
 
-	paymentStatus, _ := paymentData["status"].(string)
-	amount, _ := paymentData["amount"].(float64)
-	paidAtStr, _ := paymentData["paid_at"].(string)
-
-	log.Printf("Pakasir Callback: event=%s, merchant_order_id=%s, status=%s, amount=%.0f, timestamp=%s",
-		event, merchantOrderID, paymentStatus, amount, time.Now().Format(time.RFC3339))
-
-	if merchantOrderID == "" {
-		return fmt.Errorf("merchant_order_id not found in callback")
-	}
-
-	// Process based on event type or status
-	if event == "payment.paid" || event == "payment.completed" || paymentStatus == "paid" || paymentStatus == "completed" || paymentStatus == "success" {
-		log.Printf("Payment completed for merchant_order_id: %s", merchantOrderID)
-
-		// Parse paid_at timestamp if available
-		var paidAt time.Time
-		if paidAtStr != "" {
-			parsedTime, err := time.Parse(time.RFC3339, paidAtStr)
+		// Parse completed_at timestamp if available
+		var completedAt time.Time
+		if completedAtStr != "" {
+			parsedTime, err := time.Parse(time.RFC3339, completedAtStr)
 			if err == nil {
-				paidAt = parsedTime
+				completedAt = parsedTime
 			} else {
-				paidAt = time.Now()
+				completedAt = time.Now()
 			}
 		} else {
-			paidAt = time.Now()
+			completedAt = time.Now()
 		}
 
 		// Update payment_history table
@@ -405,61 +589,61 @@ func (g *PakasirGateway) HandleCallback(payload []byte, headers map[string]strin
 				UPDATE payment_history 
 				SET status = $1, paid_at = $2, updated_at = $3
 				WHERE reference = $4 OR merchant_ref = $4
-			`, "PAID", paidAt, time.Now(), merchantOrderID)
+			`, "PAID", completedAt, time.Now(), orderID)
 			if err != nil {
 				log.Printf("Failed to update payment history: %v", err)
 			}
 
 			// Activate premium
-			if err := activatePremium(g.db, merchantOrderID); err != nil {
+			if err := activatePremium(g.db, orderID); err != nil {
 				log.Printf("Failed to activate premium: %v", err)
 			}
 		}
 
-	} else if event == "payment.failed" || paymentStatus == "failed" {
-		log.Printf("Payment failed for merchant_order_id: %s", merchantOrderID)
+	} else if status == "failed" {
+		log.Printf("Payment failed for order_id: %s", orderID)
 
 		if g.db != nil {
 			_, err := g.db.Exec(`
 				UPDATE payment_history 
 				SET status = $1, updated_at = $2
 				WHERE reference = $3 OR merchant_ref = $3
-			`, "FAILED", time.Now(), merchantOrderID)
+			`, "FAILED", time.Now(), orderID)
 			if err != nil {
 				log.Printf("Failed to update payment history: %v", err)
 			}
 		}
 
-	} else if event == "payment.expired" || paymentStatus == "expired" {
-		log.Printf("Payment expired for merchant_order_id: %s", merchantOrderID)
+	} else if status == "expired" {
+		log.Printf("Payment expired for order_id: %s", orderID)
 
 		if g.db != nil {
 			_, err := g.db.Exec(`
 				UPDATE payment_history 
 				SET status = $1, updated_at = $2
 				WHERE reference = $3 OR merchant_ref = $3
-			`, "EXPIRED", time.Now(), merchantOrderID)
+			`, "EXPIRED", time.Now(), orderID)
 			if err != nil {
 				log.Printf("Failed to update payment history: %v", err)
 			}
 		}
 
-	} else if event == "payment.cancelled" || paymentStatus == "cancelled" {
-		log.Printf("Payment cancelled for merchant_order_id: %s", merchantOrderID)
+	} else if status == "cancelled" {
+		log.Printf("Payment cancelled for order_id: %s", orderID)
 
 		if g.db != nil {
 			_, err := g.db.Exec(`
 				UPDATE payment_history 
 				SET status = $1, updated_at = $2
 				WHERE reference = $3 OR merchant_ref = $3
-			`, "CANCELLED", time.Now(), merchantOrderID)
+			`, "CANCELLED", time.Now(), orderID)
 			if err != nil {
 				log.Printf("Failed to update payment history: %v", err)
 			}
 		}
 
 	} else {
-		log.Printf("Unknown event type or status: event=%s, status=%s for merchant_order_id: %s", event, paymentStatus, merchantOrderID)
+		log.Printf("Unknown status: %s for order_id: %s", status, orderID)
 	}
 
 	return nil
