@@ -197,7 +197,7 @@ func (g *PakasirGateway) CreateTransaction(req CreateTransactionRequest) (interf
 	// Map common codes to Pakasir format
 	methodMap := map[string]string{
 		"qris":          "qris",
-		"cimbniagava":   "cimb_niaga_via",
+		"cimbniagava":   "cimb_niaga_va",
 		"bniva":         "bni_va",
 		"briva":         "bri_va",
 		"permatava":     "permata_va",
