@@ -27,13 +27,16 @@ const Checkout = () => {
   const navigate = useNavigate();
   const t = translations[language];
 
-  // Get plan details from navigation state
-  const planDetails = location.state || {
-    id: 'user-5d',
-    duration: '5 Days',
-    price: 'Rp 7.000',
-    type: 'User Premium'
-  };
+  // Get plan details from navigation state with proper defaults
+  const planDetails = React.useMemo(() => {
+    const state = location.state || {};
+    return {
+      id: state.id || 'user-5d',
+      duration: state.duration || '5 Days',
+      price: state.price || 'Rp 7.000',
+      type: state.type || 'User Premium'
+    };
+  }, [location.state]);
 
   const communityLink = React.useMemo(() => {
     const hostname = window.location.hostname;
@@ -163,7 +166,7 @@ const Checkout = () => {
         groupId: isGroup ? whatsappNumber : '',
         orderItems: [
           {
-            name: `${planDetails.type} - ${planDetails.duration}`,
+            name: `${planDetails.type || 'Premium'} - ${planDetails.duration || 'Subscription'}`,
             price: amount,
             quantity: 1,
           }
@@ -189,17 +192,23 @@ const Checkout = () => {
         toast.success(language === 'id' ? 'Transaksi berhasil dibuat!' : 'Transaction created successfully!');
         
         // Redirect to payment page
-        if (paymentData.checkout_url) {
+        if (paymentData && paymentData.checkout_url) {
           // Give user a moment to see the success message
           setTimeout(() => {
             window.location.href = paymentData.checkout_url;
+          }, 1000);
+        } else if (paymentData && paymentData.payment_url) {
+          // For Iskapay or other gateways that use payment_url
+          setTimeout(() => {
+            window.location.href = paymentData.payment_url;
           }, 1000);
         } else {
           // For direct payment methods, navigate back to pricing
           setTimeout(() => navigate('/pricing'), 2000);
         }
       } else {
-        toast.error(response.data.message || t.transactionError || (language === 'id' ? 'Gagal membuat transaksi' : 'Failed to create transaction'));
+        const errorMessage = response.data.message || t.transactionError || (language === 'id' ? 'Gagal membuat transaksi' : 'Failed to create transaction');
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error creating transaction:', error);
@@ -209,15 +218,19 @@ const Checkout = () => {
     }
   };
 
-  // Group payment channels by type
-  const groupedChannels = paymentChannels.reduce((acc, channel) => {
-    const group = channel.group;
-    if (!acc[group]) {
-      acc[group] = [];
-    }
-    acc[group].push(channel);
-    return acc;
-  }, {});
+  // Group payment channels by type with safe fallback
+  const groupedChannels = React.useMemo(() => {
+    if (!Array.isArray(paymentChannels)) return {};
+    
+    return paymentChannels.reduce((acc, channel) => {
+      const group = channel.group || 'Other';
+      if (!acc[group]) {
+        acc[group] = [];
+      }
+      acc[group].push(channel);
+      return acc;
+    }, {});
+  }, [paymentChannels]);
 
   return (
     <div className="home-container">
@@ -278,16 +291,16 @@ const Checkout = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-300">{t.planType}:</span>
-                    <span className="font-medium text-white">{planDetails.type}</span>
+                    <span className="font-medium text-white">{planDetails.type || 'Premium'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-300">{t.planDuration}:</span>
-                    <span className="font-medium text-white">{planDetails.duration}</span>
+                    <span className="font-medium text-white">{planDetails.duration || '-'}</span>
                   </div>
                   <div className="border-t border-gray-700 pt-3 mt-3">
                     <div className="flex justify-between text-lg font-bold">
                       <span className="text-white">{t.total}:</span>
-                      <span className="text-green-400">{planDetails.price}</span>
+                      <span className="text-green-400">{planDetails.price || 'Rp 0'}</span>
                     </div>
                   </div>
                 </div>
@@ -356,7 +369,7 @@ const Checkout = () => {
                       )}
                     </Button>
                   </div>
-                  {verified && verificationResult && (
+                  {verified && verificationResult && verificationResult.message && (
                     <div className="mt-2 p-3 bg-green-950 border-2 border-green-500 rounded-md flex items-center gap-2">
                       <Check size={18} className="text-green-300" />
                       <span className="text-sm text-white font-medium">{verificationResult.message}</span>
@@ -415,12 +428,13 @@ const Checkout = () => {
                                     {channel.icon_url && (
                                       <img 
                                         src={channel.icon_url} 
-                                        alt={channel.name} 
+                                        alt={channel.name || 'Payment method'} 
                                         className="h-6 w-auto"
+                                        onError={(e) => { e.target.style.display = 'none'; }}
                                       />
                                     )}
                                     <Label htmlFor={channel.code} className="cursor-pointer text-white">
-                                      {channel.name}
+                                      {channel.name || 'Payment Method'}
                                     </Label>
                                   </div>
                                   {channel.total_fee && channel.total_fee.flat && (
