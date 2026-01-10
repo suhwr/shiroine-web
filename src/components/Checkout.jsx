@@ -348,13 +348,14 @@ const Checkout = () => {
                         setVerified(false);
                         setVerificationResult(null);
                       }}
-                      className="flex-1"
+                      className="flex-1 text-white bg-gray-800/50 border-gray-700 placeholder:text-gray-400"
                       disabled={verifying}
                     />
                     <Button 
                       onClick={handleVerify}
                       disabled={verifying || !whatsappNumber}
                       variant="outline"
+                      className="border-gray-700 text-white hover:bg-gray-800 hover:text-white"
                       style={{ minWidth: '100px' }}
                     >
                       {verifying ? (

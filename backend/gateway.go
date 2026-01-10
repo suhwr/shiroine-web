@@ -32,6 +32,8 @@ func PaymentGatewayFactory(gatewayType string) PaymentGateway {
 		return NewIskapayGateway()
 	case "tripay":
 		return NewTripayGateway()
+	case "pakasir":
+		return NewPakasirGateway()
 	default:
 		// Default to Tripay for backward compatibility
 		return NewTripayGateway()
