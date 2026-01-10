@@ -278,13 +278,45 @@ func (g *IskapayGateway) GetTransactionStatus(orderId string) (interface{}, erro
 				dbStatus = "CANCELLED"
 			}
 
-			_, err := g.db.Exec(`
-				UPDATE payment_history 
-				SET status = $1, updated_at = $2
-				WHERE reference = $3 OR merchant_ref = $3
-			`, dbStatus, time.Now(), orderId)
-			if err != nil {
-				log.Printf("Failed to update transaction status: %v", err)
+			// Check current status in database before updating
+			var currentStatus string
+			err := g.db.QueryRow(`
+				SELECT status FROM payment_history 
+				WHERE reference = $1 OR merchant_ref = $1
+			`, orderId).Scan(&currentStatus)
+
+			// Only update and trigger premium activation if status has changed
+			if err == nil && currentStatus != dbStatus {
+				// Update payment history
+				updateQuery := `
+					UPDATE payment_history 
+					SET status = $1, updated_at = $2
+					WHERE reference = $3 OR merchant_ref = $3
+				`
+				
+				// If status is PAID, also set paid_at
+				if dbStatus == "PAID" {
+					updateQuery = `
+						UPDATE payment_history 
+						SET status = $1, paid_at = $2, updated_at = $2
+						WHERE reference = $3 OR merchant_ref = $3
+					`
+				}
+				
+				_, err := g.db.Exec(updateQuery, dbStatus, time.Now(), orderId)
+				if err != nil {
+					log.Printf("Failed to update transaction status: %v", err)
+				} else {
+					log.Printf("Iskapay status updated: merchant_order_id=%s, status=%s (was %s)", orderId, dbStatus, currentStatus)
+				}
+
+				// Trigger premium activation for PAID status (since Iskapay has no callback)
+				if dbStatus == "PAID" {
+					log.Printf("Payment completed for merchant_order_id: %s (detected via status check)", orderId)
+					if err := activatePremium(g.db, orderId); err != nil {
+						log.Printf("Failed to activate premium: %v", err)
+					}
+				}
 			}
 		}
 
