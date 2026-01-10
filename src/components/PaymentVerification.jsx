@@ -284,7 +284,7 @@ const PaymentVerification = () => {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {(paymentStatus === 'PAID' || paymentStatus === 'paid' || paymentStatus === 'completed') && (
                     <Button 
-                      onClick={() => navigate('/pricing')}
+                      onClick={() => navigate('/')}
                       className="btn-primary"
                     >
                       <CheckCircle size={18} />

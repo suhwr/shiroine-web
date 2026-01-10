@@ -85,10 +85,11 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 	// Generate description from order items
 	description := "Premium subscription"
 	if req.OrderItems != nil {
-		if items, ok := req.OrderItems.([]interface{}); ok && len(items) > 0 {
-			if item, ok := items[0].(map[string]interface{}); ok {
-				if name, ok := item["name"].(string); ok {
-					description = name
+		// Try to extract item name from order items
+		if itemsArray, ok := req.OrderItems.([]interface{}); ok && len(itemsArray) > 0 {
+			if firstItem, ok := itemsArray[0].(map[string]interface{}); ok {
+				if itemName, ok := firstItem["name"].(string); ok && itemName != "" {
+					description = itemName
 				}
 			}
 		}
@@ -201,9 +202,13 @@ func (g *IskapayGateway) CreateTransaction(req CreateTransactionRequest) (interf
 				if strings.Contains(req.ReturnURL, "?") {
 					separator = "&"
 				}
-				paymentURL = paymentURL + separator + "return_url=" + req.ReturnURL + separator + "merchant_order_id=" + merchantOrderID
+				returnURLParam := separator + "merchant_order_id=" + merchantOrderID
+				// Note: payment_url already has the redirect URL, we just need to track the order
+				data["checkout_url"] = paymentURL
+				data["return_url_with_order"] = req.ReturnURL + returnURLParam
+			} else {
+				data["checkout_url"] = paymentURL
 			}
-			data["checkout_url"] = paymentURL
 		}
 
 		return data, nil
