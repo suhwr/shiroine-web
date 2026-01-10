@@ -285,9 +285,9 @@ func (g *PakasirGateway) createAPITransaction(req CreateTransactionRequest, orde
 	}
 
 	totalPayment := req.Amount
-	if total, ok := paymentData["total_payment"].(float64); ok {
-		totalPayment = int(total)
-	}
+//	if total, ok := paymentData["total_payment"].(float64); ok {
+//		totalPayment = int(total)
+//	}
 
 	expiredAt := ""
 	if exp, ok := paymentData["expired_at"].(string); ok {
