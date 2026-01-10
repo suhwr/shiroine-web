@@ -7,6 +7,7 @@ import { Toaster } from './components/ui/sonner';
 const Home = lazy(() => import('./components/Home'));
 const Pricing = lazy(() => import('./components/Pricing'));
 const Checkout = lazy(() => import('./components/Checkout'));
+const PaymentPage = lazy(() => import('./components/PaymentPage'));
 const PaymentVerification = lazy(() => import('./components/PaymentVerification'));
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./components/TermsOfService'));
@@ -23,6 +24,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/pay/:invoiceId" element={<PaymentPage />} />
             <Route path="/payment-verification" element={<PaymentVerification />} />
             <Route path="/history" element={<History />} />
             <Route path="/donate" element={<Donate />} />

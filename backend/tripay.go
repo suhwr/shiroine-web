@@ -239,6 +239,12 @@ func (g *TripayGateway) CreateTransaction(req CreateTransactionRequest) (interfa
 				}
 			}
 
+			// Add merchant_order_id for consistency with Iskapay
+			// For Tripay, use the reference as merchant_order_id
+			if reference, ok := paymentData["reference"].(string); ok {
+				paymentData["merchant_order_id"] = reference
+			}
+
 			return paymentData, nil
 		}
 	}
@@ -294,6 +300,12 @@ func (g *TripayGateway) GetTransactionStatus(reference string) (interface{}, err
 				if err != nil {
 					log.Printf("Failed to update transaction status: %v", err)
 				}
+			}
+
+			// Add merchant_order_id for consistency with Iskapay
+			// For Tripay, use the reference as merchant_order_id
+			if ref, ok := data["reference"].(string); ok {
+				data["merchant_order_id"] = ref
 			}
 
 			return data, nil
