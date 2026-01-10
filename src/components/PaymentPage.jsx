@@ -373,7 +373,7 @@ const PaymentPage = () => {
 
                     {/* QRIS Payment - Show QR Code */}
                     {isPending && (paymentData.qr_code || paymentData.payment_number || paymentData.qr_string) && 
-                     (paymentData.payment_method === 'qris' || paymentData.payment_method === 'QRIS' || !paymentData.payment_method || paymentData.payment_method.toLowerCase().includes('qris')) && (
+                     paymentData.payment_method && (paymentData.payment_method.toLowerCase() === 'qris' || paymentData.payment_method.toLowerCase().includes('qris')) && (
                       <>
                         <p className="text-gray-300 mb-6">
                           {language === 'id' 
